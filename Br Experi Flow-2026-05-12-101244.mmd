@@ -1,0 +1,89 @@
+---
+config:
+  layout: elk
+---
+flowchart LR
+
+subgraph L1["CAMADA 1 — INPUT / CONFIGURAÇÃO"]
+direction TB
+UI["🌐 Interface Web Mesa"]
+CFG1["Configuração Organizacional<br/>• Nº colaboradores<br/>• Departamentos<br/>• Hierarquias<br/>• Escolaridade"]
+CFG2["Configuração de Ataques<br/>• Phishing Massivo<br/>• Spear Phishing<br/>• Campanhas Internas"]
+CFG3["Medidas de Defesa<br/>• Formação<br/>• MFA<br/>• Segmentação"]
+CFG4["Parâmetros da Simulação<br/>• Nº ticks<br/>• Velocidade<br/>• Cenários experimentais"]
+UI --> CFG1
+UI --> CFG2
+UI --> CFG3
+UI --> CFG4
+end
+
+subgraph L2["CAMADA 2 — PROCESSAMENTO / ENGINE"]
+direction TB
+ENGINE["⚙️ Motor de Simulação<br/>Mesa + Python"]
+GRAPH["🌐 Rede Sociotécnica<br/>(NetworkX)"]
+AGENTS["👥 Sistema Multiagente"]
+LOGIC["🧠 Lógica Comportamental<br/>• Confiança<br/>• Hierarquia<br/>• Engenharia Social"]
+ATTACK["🎯 Simulação de Ataques<br/>• Email Injection<br/>• Credential Theft<br/>• Lateral Movement"]
+DEFENSE["🛡️ Mecanismos de Defesa<br/>• MFA Validation<br/>• Awareness Reduction<br/>• Contenção"]
+METRICS["📊 Coleta de Métricas<br/>• Comprometidos<br/>• Taxa propagação<br/>• Tempo deteção<br/>• Impacto"]
+STATES["🔄 Estados dos Agentes<br/>• Saudável<br/>• Exposto<br/>• Comprometido<br/>• Detetado<br/>• Isolado"]
+ENGINE --> GRAPH
+ENGINE --> AGENTS
+ENGINE --> LOGIC
+ENGINE --> ATTACK
+ENGINE --> DEFENSE
+ENGINE --> METRICS
+AGENTS --> STATES
+end
+
+subgraph L3["CAMADA 3 — OUTPUT / DASHBOARD"]
+direction TB
+DASH["📈 Dashboard Web"]
+VIS1["📍 Grafo Organizacional<br/>Estado da Rede"]
+VIS2["📊 Gráficos Temporais<br/>Evolução do Ataque"]
+VIS3["🏢 Impacto por Departamento"]
+VIS4["⚠️ KPIs de Segurança"]
+VIS5["🕒 Timeline de Eventos"]
+VIS6["📉 Comparação de Experiências"]
+DASH --> VIS1
+DASH --> VIS2
+DASH --> VIS3
+DASH --> VIS4
+DASH --> VIS5
+DASH --> VIS6
+end
+
+subgraph EXP["🧪 Experiências Académicas"]
+direction TB
+E1["Experiência 1<br/>Sem Formação"]
+E2["Experiência 2<br/>50% Formação"]
+E3["Experiência 3<br/>MFA Ativo"]
+end
+
+subgraph TECH["💻 Stack Tecnológica"]
+direction LR
+T1["Mesa"]
+T2["Python"]
+T3["NetworkX"]
+T4["ChartModule"]
+T5["Plotly / Matplotlib"]
+end
+
+L1 --> L2
+L2 --> L3
+L1 --> EXP
+EXP --> L2
+L2 --> TECH
+L3 --> TECH
+
+classDef layer1 fill:#d5e8d4,stroke:#82b366,stroke-width:2px,color:#1e1b4b
+classDef layer2 fill:#dae8fc,stroke:#6c8ebf,stroke-width:2px,color:#1e1b4b
+classDef layer3 fill:#ffe6cc,stroke:#d79b00,stroke-width:2px,color:#1e1b4b
+classDef exp fill:#f8cecc,stroke:#b85450,stroke-width:2px,color:#1e1b4b
+classDef tech fill:#e1d5e7,stroke:#9673a6,stroke-width:2px,color:#1e1b4b
+
+class L1 layer1
+class L2 layer2
+class L3 layer3
+class EXP exp
+class TECH tech
