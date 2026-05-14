@@ -3,59 +3,96 @@ import streamlit as st
 
 def build_simulation_config():
     """
-    Cria a interface visual para configurar a simulação e
-    retorna um dicionário com todos os parâmetros.
+    Interface com opções globais na sidebar e configuração
+    detalhada dos departamentos no centro da página.
     """
-    st.sidebar.header("🏢 Configuração da Organização")
 
-    # Configuração de Departamentos
-    n_depts = st.sidebar.number_input("Número de Departamentos", min_value=1, max_value=5, value=2)
+    # --- SIDEBAR: OPÇÕES GLOBAIS ---
+    st.sidebar.header("⚙️ Opções Gerais")
+
+    # Limite de 20 Departamentos
+    n_depts = st.sidebar.number_input(
+        "Número de Departamentos",
+        min_value=1,
+        max_value=20,
+        value=2
+    )
+
+    st.sidebar.divider()
+
+    # Configuração das Defesas na Sidebar para libertar espaço no centro
+    st.sidebar.subheader("🛡️ Medidas de Defesa")
+    mfa = st.sidebar.toggle("Ativar MFA", value=False)
+    training = st.sidebar.slider("Eficácia da Formação", 0.0, 1.0, 0.3)
+    segmentation = st.sidebar.slider("Nível de Segmentação", 0.0, 1.0, 0.5)
+
+    # --- CENTRO DA PÁGINA: DEPARTAMENTOS E ATAQUE ---
+    st.title("🏢 Configuração da Organização")
+    st.info("Configure os detalhes de cada departamento abaixo.")
 
     departments = []
-    for i in range(n_depts):
-        with st.sidebar.expander(f"Departamento {i + 1}"):
-            # Adicionada key única para o nome do departamento
-            name = st.text_input(f"Nome do Dept {i + 1}", value=f"Dept_{i + 1}", key=f"dept_name_{i}")
-            n_agents = st.slider(f"Número de Agentes (Dept {i + 1})", 2, 20, 5, key=f"n_agents_slider_{i}")
 
-            dept_agents = []
-            for j in range(n_agents):
-                # KEY ÚNICA: combina o index do departamento (i) com o do agente (j)
-                unique_key = f"hier_dept_{i}_agent_{j}"
+    # Criar colunas ou usar expanders no centro para os departamentos
+    for i in range(int(n_depts)):
+        with st.container(border=True):  # Dá um aspeto de "card" a cada departamento
+            st.subheader(f"📍 Departamento {i + 1}")
 
-                dept_agents.append({
-                    "name": f"User_{i + 1}_{j + 1}",
-                    "hierarchy_level": st.select_slider(
-                        f"Nível Hierárquico {j + 1}",
-                        options=[1, 2, 3],
-                        value=1,
-                        key=unique_key  # Isto resolve o erro!
-                    ),
-                    "risk_propensity": 0.5,
-                    "awareness_level": 0.5
-                })
+            col_name, col_agents = st.columns([2, 3])
+
+            with col_name:
+                name = st.text_input(
+                    f"Nome do Departamento",
+                    value=f"Dept_{i + 1}",
+                    key=f"dept_name_{i}"
+                )
+
+            with col_agents:
+                # Limite de 100 Agentes
+                n_agents = st.slider(
+                    f"Quantidade de Agentes",
+                    1, 100, 5,
+                    key=f"n_agents_slider_{i}"
+                )
+
+            # Expander para não ocupar demasiado espaço vertical com muitos agentes
+            with st.expander(f"👤 Configurar Níveis dos Agentes ({n_agents})"):
+                dept_agents = []
+                for j in range(n_agents):
+                    unique_key = f"hier_dept_{i}_agent_{j}"
+
+                    # Usar colunas dentro do expander para ser mais compacto
+                    c1, c2 = st.columns([1, 1])
+                    with c1:
+                        st.caption(f"User {j + 1}")
+                    with c2:
+                        level = st.select_slider(
+                            f"Nível",
+                            options=[1, 2, 3],
+                            value=1,
+                            key=unique_key,
+                            label_visibility="collapsed"  # Esconde o texto para poupar espaço
+                        )
+
+                    dept_agents.append({
+                        "name": f"User_{i + 1}_{j + 1}",
+                        "hierarchy_level": level,
+                        "risk_propensity": 0.5,
+                        "awareness_level": 0.5
+                    })
 
             departments.append({"name": name, "agents": dept_agents})
 
-    # Configuração do Ataque
+    st.divider()
+
+    # Configuração do Ataque no Centro (Final da página)
     st.header("⚔️ Parâmetros de Ataque")
-    col1, col2 = st.columns(2)
-    with col1:
+    ca1, ca2 = st.columns(2)
+    with ca1:
         attack_type = st.selectbox("Tipo de Ataque", ["Phishing", "Spear Phishing"])
-    with col2:
+    with ca2:
         click_rate = st.slider("Intensidade do Ataque (Base)", 0.0, 1.0, 0.5)
 
-    # Configuração das Defesas (Mitigações)
-    st.header("🛡️ Medidas de Defesa")
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        mfa = st.toggle("Ativar MFA", value=True)
-    with c2:
-        training = st.slider("Eficácia da Formação", 0.0, 1.0, 0.3)
-    with c3:
-        segmentation = st.slider("Nível de Segmentação", 0.0, 1.0, 0.5)
-
-    # Montar o dicionário final que a API espera receber
+    # Montar o dicionário final
     config = {
         "organization": {
             "departments": departments
