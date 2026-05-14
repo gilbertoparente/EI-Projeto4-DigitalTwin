@@ -40,9 +40,20 @@ O sistema está estruturado em 3 camadas principais:
 
 ## 🚀 Como Executar
 
+1. Abrir o terminal na pasta do prjecto e iniciar o servidor:
+2. python -m src.main
+
+Abrir o Dashboard:
+ $env:PYTHONPATH = "."       
+streamlit run ui/dashboard.py
+
+
 ### 1. Clonar o repositório
 ```bash
 git clone https://github.com/gilbertoparente/EI-Projeto4-DigitalTwin.git
 cd DigitalTwin
 
 
+
+
+# 

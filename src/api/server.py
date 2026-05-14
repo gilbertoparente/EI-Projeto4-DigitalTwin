@@ -1,56 +1,44 @@
 from fastapi import FastAPI
-import src.api.routes.simulation as simulation_module
+from src.core import simulation_state
+from src.services.simulation_service import SimulationService
 
-app = FastAPI(
-    title="Digital Twin API",
-    version="2.0"
-)
+# 1. IMPORTA O TEU FICHEIRO DE ROTAS
+# Ajusta o caminho conforme a tua estrutura (ex: src.api.routes)
+try:
+    from src.api.routes import graph
+except ImportError:
+    # Se a pasta se chamar apenas 'routes' dentro de api:
+    from .routes import graph
 
-# =========================================================
-# ROUTER
-# =========================================================
+app = FastAPI(title="Digital Twin Cybersecurity API")
 
-app.include_router(simulation_module.router)
+# =====================================================
+# ROTAS PRINCIPAIS (Diretas no server.py)
+# =====================================================
 
-# =========================================================
-# ROOT
-# =========================================================
-
-@app.get("/")
-def root():
+@app.post("/start")
+async def start(config: dict):
+    simulation_state.sim_instance = SimulationService(config)
     return {
-        "message": "Digital Twin API running"
+        "status": "Simulação Iniciada",
+        "agentes": len(simulation_state.sim_instance.agents)
     }
 
-# =========================================================
-# STATUS
-# =========================================================
+@app.get("/step")
+async def step():
+    if not simulation_state.sim_instance:
+        return {"error": "Simulação não iniciada"}
+    return simulation_state.sim_instance.step()
 
 @app.get("/status")
-def status():
+async def status():
+    sim = simulation_state.sim_instance
+    if not sim: return {"status": "idle"}
+    return {"tick": sim.tick, "agents": len(sim.agents)}
 
-    sim_instance = simulation_module.sim_instance
+# =====================================================
+# REGISTO DE ROUTERS EXTERNOS
+# =====================================================
 
-    if sim_instance is None:
-
-        return {
-            "agents": 0,
-            "state": {
-                "opened": 0,
-                "clicked": 0,
-                "infected": 0
-            }
-        }
-
-    opened = sum(sim_instance.metrics["opened"])
-    clicked = sum(sim_instance.metrics["clicked"])
-    infected = sum(sim_instance.metrics["infected"])
-
-    return {
-        "agents": len(sim_instance.agents),
-        "state": {
-            "opened": opened,
-            "clicked": clicked,
-            "infected": infected
-        }
-    }
+# 2. INCLUI O ROUTER DO GRAPH
+app.include_router(graph.router)

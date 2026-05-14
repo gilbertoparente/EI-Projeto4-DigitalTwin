@@ -1,44 +1,62 @@
 import streamlit as st
-import requests
-import time
 
-st.title("Digital Twin - Dashboard")
+# 1. Configuração Global da Página (Deve ser sempre o primeiro comando Streamlit)
+st.set_page_config(
+    page_title="Cyber Digital Twin | IPVC",
+    page_icon="🛡️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-placeholder = st.empty()
+# 2. Estilização Customizada (Opcional, para um look mais "Cyber")
+st.markdown("""
+    <style>
+    .main {
+        background-color: #f5f7f9;
+    }
+    .stMetric {
+        background-color: #ffffff;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-while True:
+# 3. Sidebar de Navegação
+with st.sidebar:
+    st.image("https://www.ipvc.pt/wp-content/uploads/2020/12/logo-ipvc.png", width=150)  # Exemplo de logo
+    st.title("🛡️ CyberTwin Panel")
+    st.info("Digital Twin para Simulação de Engenharia Social")
 
-    try:
+    page = st.radio("Navegação Principal", [
+        "🧪 Experiments",
+        "🟢 Live System",
+        "📊 Analytics",
+        "🕸️ Network View"
+    ])
 
-        response = requests.get("http://127.0.0.1:8000/status")
+    st.divider()
+    st.caption("Desenvolvido para Projeto de Cibersegurança @ IPVC")
 
-        if response.status_code == 200:
+# 4. Encaminhamento de Páginas
+# Removemos o 'from ui.pages.X import *' e usamos chamadas explícitas à função show()
+if "Experiments" in page:
+    from ui.pages import experiments
 
-            data = response.json()
+    experiments.show()
 
-            with placeholder.container():
+elif "Live System" in page:
+    from ui.pages import live_system
 
-                st.metric("Agentes", data["agents"])
+    live_system.show()
 
-                st.metric(
-                    "Opened",
-                    data["state"]["opened"]
-                )
+elif "Analytics" in page:
+    from ui.pages import analytics
 
-                st.metric(
-                    "Clicked",
-                    data["state"]["clicked"]
-                )
+    analytics.show()
 
-                st.metric(
-                    "Infected",
-                    data["state"]["infected"]
-                )
+elif "Network View" in page:
+    from ui.pages import network
 
-                st.json(data)
-
-    except Exception as e:
-
-        st.error(str(e))
-
-    time.sleep(1)
+    network.show()
