@@ -1,38 +1,45 @@
 from fastapi import APIRouter
-from services.simulation_service import SimulationService
+from src.services.simulation_service import SimulationService
+from src.core import simulation_state as state
 
 router = APIRouter()
 
-sim_instance = None
-
-# =========================================================
-# START SIMULATION
-# =========================================================
 
 @router.post("/start")
 def start_simulation(config: dict):
 
-    global sim_instance
-
-    sim_instance = SimulationService(config)
+    global state
+    state = SimulationService(config)
 
     return {
         "status": "started",
-        "agents": len(sim_instance.agents)
+        "agents": len(state.agents)
     }
 
-# =========================================================
-# STEP
-# =========================================================
 
 @router.get("/step")
 def step_simulation():
 
-    global sim_instance
+    if state is None:
+        return {"error": "simulation not started"}
 
-    if sim_instance is None:
+    return state.step()
+
+
+@router.get("/status")
+def status():
+
+    if state is None:
         return {
-            "error": "simulation not started"
+            "agents": 0,
+            "state": {"opened": 0, "clicked": 0, "infected": 0}
         }
 
-    return sim_instance.step()
+    return {
+        "agents": len(state.agents),
+        "state": {
+            "opened": sum(state.metrics["opened"]),
+            "clicked": sum(state.metrics["clicked"]),
+            "infected": sum(state.metrics["infected"])
+        }
+    }
