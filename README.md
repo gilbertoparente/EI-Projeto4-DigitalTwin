@@ -38,7 +38,7 @@ O sistema está estruturado em 3 camadas principais:
 
 
 
-## 🚀 Como Executar
+## Como Executar
 
 1. Abrir o terminal na pasta do prjecto e iniciar o servidor:
 2. python -m src.main
