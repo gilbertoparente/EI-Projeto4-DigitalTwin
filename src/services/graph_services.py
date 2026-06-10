@@ -2,11 +2,6 @@ from typing import Dict, List
 
 
 class GraphService:
-    """
-    Converte o estado interno da simulação num formato
-    compatível com D3.js / NetworkX para visualização.
-
-    """
 
     def get_graph_data(self, agents: Dict, graph_connections: Dict) -> Dict[str, List]:
         nodes = []
@@ -27,7 +22,10 @@ class GraphService:
         for source_id, connections in graph_connections.items():
             for conn in connections:
                 target_id = conn["target"]
-                edge_key = tuple(sorted((source_id, target_id)))
+                # Garante que a chave é sempre (int, int) ordenado,
+                # evitando duplicados por inversão de ordem ou tipo misto
+                edge_key = (min(int(source_id), int(target_id)),
+                            max(int(source_id), int(target_id)))
                 if edge_key in seen_edges:
                     continue
                 seen_edges.add(edge_key)

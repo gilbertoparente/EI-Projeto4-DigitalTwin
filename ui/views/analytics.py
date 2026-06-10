@@ -41,12 +41,12 @@ def show():
         df = pd.DataFrame(st.session_state.history).set_index("tick")
 
         # 1. Gráfico de Linhas Consolidado (Funil de Ataque)
-        st.subheader("📈 Attack Funnel")
+        st.subheader("Attack Funnel")
         # Mostra o comportamento do step atual
         st.line_chart(df[["opened", "clicked", "infected"]])
 
         # 2. Gráfico de Evolução Acumulada
-        st.subheader("☣️ Total Network Compromise")
+        st.subheader("☣Total Network Compromise")
         # Mostra o crescimento total da infecção na rede
         st.area_chart(df["total_network_infection"])
 

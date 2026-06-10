@@ -20,27 +20,6 @@ st.markdown("""
 }
 [data-testid="stSidebar"] * { color: #e6edf3 !important; }
 
-/* Nav buttons */
-.nav-btn {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 10px 14px;
-    border-radius: 8px;
-    border: none;
-    background: transparent;
-    color: #8b949e;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background .15s, color .15s;
-    text-align: left;
-    margin-bottom: 2px;
-}
-.nav-btn:hover  { background: #161b22; color: #e6edf3; }
-.nav-btn.active { background: #1f2937; color: #58a6ff; border-left: 3px solid #58a6ff; }
-
 /* Hide default radio widget */
 div[data-testid="stRadio"] > label { display: none; }
 div[data-testid="stRadio"] > div   { gap: 2px; }
@@ -89,12 +68,8 @@ div[data-testid="stRadio"] div[data-testid="stMarkdownContainer"] p {
     border-radius: 8px;
     font-weight: 600;
 }
-.stButton > button[kind="primary"]:hover {
-    background: #2ea043;
-}
-.stButton > button {
-    border-radius: 8px;
-}
+.stButton > button[kind="primary"]:hover { background: #2ea043; }
+.stButton > button { border-radius: 8px; }
 
 /* Section headers */
 h1 { color: #e6edf3 !important; font-size: 1.5rem !important; font-weight: 600 !important; }
@@ -124,7 +99,7 @@ with st.sidebar:
 
     page = st.radio(
         "nav",
-        ["⚗️  Experiments", "📡  Live System", "🕸️  Network"],
+        ["⚗️  Experiments", "📡  Live System", "🕸️  Network", "⚔️  Comparação"],
         label_visibility="collapsed"
     )
 
@@ -133,17 +108,20 @@ with st.sidebar:
     <div style="font-size:11px; color:#484f58; padding: 0 4px; line-height:1.7">
       Projeto IV — Engenharia Informática<br>
       Simulação de Engenharia Social<br>
-      IPVC © 2025
+      IPVC © 2026
     </div>
     """, unsafe_allow_html=True)
 
 # ── Router ─────────────────────────────────────────────────
 if "Experiments" in page:
-    from ui.pages import experiments
+    from ui.views import experiments
     experiments.show()
 elif "Live System" in page:
-    from ui.pages import live_system
+    from ui.views import live_system
     live_system.show()
 elif "Network" in page:
-    from ui.pages import network
+    from ui.views import network
     network.show()
+elif "Comparação" in page:
+    from ui.views import scenario_comparison
+    scenario_comparison.show()

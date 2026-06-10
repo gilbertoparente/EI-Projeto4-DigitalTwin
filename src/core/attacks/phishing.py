@@ -9,7 +9,6 @@ class PhishingAttack(Attack):
         if not agents:
             return []
 
-        # Seleciona IDs
         agent_ids = list(agents.keys())
         n = max(1, len(agent_ids) // 20)  # 5% da população
 

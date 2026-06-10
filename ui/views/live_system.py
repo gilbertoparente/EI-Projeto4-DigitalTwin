@@ -3,12 +3,46 @@ import time
 import pandas as pd
 from ui.api_client import step_simulation, get_status
 
+_TABLER_CDN = (
+    "<link rel='stylesheet' "
+    "href='https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css'>"
+)
+
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 def _metric_with_tip(col, label: str, value, tip: str, delta=None):
     with col:
         st.metric(label, value, delta=delta, help=tip)
+
+
+def _section_heading(label: str, color: str = "#58a6ff"):
+    st.markdown(
+        f"""<div style="border-left:3px solid {color}; padding-left:12px; margin-bottom:.75rem; border-radius:0;">
+              <span style="font-size:11px; font-weight:600; color:{color};
+                           text-transform:uppercase; letter-spacing:.06em;">{label}</span>
+            </div>""",
+        unsafe_allow_html=True,
+    )
+
+
+def _alert(msg: str, kind: str = "info"):
+    styles = {
+        "success": ("#0d2b1d", "#1a6e2d", "#3fb950", "ti-check"),
+        "error":   ("#3d0f0f", "#7a2020", "#f85149", "ti-x"),
+        "warning": ("#2a1700", "#5a3500", "#e3b341", "ti-alert-triangle"),
+        "info":    ("#1a2a4a", "#2d5096", "#58a6ff", "ti-info-circle"),
+    }
+    bg, border, color, icon = styles.get(kind, styles["info"])
+    st.markdown(
+        f"""{_TABLER_CDN}
+            <div style="display:flex;align-items:center;gap:10px;background:{bg};
+                        border:1px solid {border};border-radius:8px;padding:10px 14px;margin:.5rem 0;">
+              <i class="ti {icon}" style="color:{color};font-size:16px;flex-shrink:0" aria-hidden="true"></i>
+              <span style="color:{color};font-size:13px;">{msg}</span>
+            </div>""",
+        unsafe_allow_html=True,
+    )
 
 
 def _ensure_history():
@@ -23,7 +57,7 @@ def _run_steps(n: int, delay: float):
     for i in range(n):
         data = step_simulation()
         if "error" in data:
-            st.error(f"Erro no step {i+1}: {data['error']}")
+            _alert(f"Erro no step {i+1}: {data['error']}", "error")
             break
         entry = data.get("result", {})
         entry["tick"]  = data.get("tick", len(st.session_state.ls_history) + 1)
@@ -42,7 +76,7 @@ def show():
     _ensure_history()
 
     st.markdown("""
-    <h1 style='margin-bottom:.25rem'>📡 Live System</h1>
+    <h1 style='margin-bottom:.25rem'>Live System</h1>
     <p style='color:#8b949e; font-size:14px; margin-bottom:1.5rem'>
       Execute a simulação passo a passo ou em lote e acompanhe a propagação em tempo real.
     </p>
@@ -53,7 +87,7 @@ def show():
     offline = "error" in status or status.get("status") == "idle"
 
     if offline:
-        st.warning("⚠️ Simulação não iniciada — vá a **Experiments** e clique em *Inicializar*.")
+        _alert("Simulação não iniciada — vá a <strong>Experiments</strong> e clique em Inicializar.", "warning")
         return
 
     total_agents = status.get("agents", 1)
@@ -73,20 +107,18 @@ def show():
 
     st.markdown("<div style='height:.5rem'></div>", unsafe_allow_html=True)
 
-    # ── Controls ──────────────────────────────────────────────
+    # ── Controls card ─────────────────────────────────────────
     st.markdown("""
     <div style="background:#161b22; border:1px solid #21262d; border-radius:10px;
                 padding:1.25rem 1.5rem; margin-bottom:1rem;">
-      <div style="font-size:13px; font-weight:600; color:#58a6ff;
-                  text-transform:uppercase; letter-spacing:.06em; margin-bottom:.75rem;">
-        Execução
-      </div>
     """, unsafe_allow_html=True)
+
+    _section_heading("Execução", "#58a6ff")
 
     ctrl1, ctrl2, ctrl3, ctrl4 = st.columns([1, 1, 1, 1])
 
     with ctrl1:
-        if st.button("▶ Step único", use_container_width=True, help="Executa exactamente 1 tick da simulação."):
+        if st.button("Step único", use_container_width=True, help="Executa exactamente 1 tick da simulação."):
             _run_steps(1, 0)
             st.rerun()
 
@@ -96,7 +128,6 @@ def show():
                                   key="n_steps_input")
 
     with ctrl3:
-        # Speed selector: maps label → delay between steps
         speed_map = {
             "Máximo": 0.0,
             "Rápido (5/s)": 0.2,
@@ -110,7 +141,7 @@ def show():
         delay = speed_map[speed_label]
 
     with ctrl4:
-        if st.button(f"⏩ Correr {n_steps} steps", use_container_width=True,
+        if st.button(f"Correr {n_steps} steps", use_container_width=True,
                      type="primary",
                      help=f"Executa {n_steps} ticks consecutivos à velocidade selecionada."):
             _run_steps(int(n_steps), delay)
@@ -120,13 +151,13 @@ def show():
 
     col_clear, _ = st.columns([1, 4])
     with col_clear:
-        if st.button("🗑️ Limpar histórico", help="Apaga o histórico local de métricas (não reinicia a simulação)."):
+        if st.button("Limpar histórico", help="Apaga o histórico local de métricas (não reinicia a simulação)."):
             st.session_state.ls_history = []
             st.rerun()
 
-    # ── Analytics (integrated) ────────────────────────────────
+    # ── Analytics card ────────────────────────────────────────
     if not st.session_state.ls_history:
-        st.info("💡 Execute pelo menos um step para ver os gráficos.")
+        _alert("Execute pelo menos um step para ver os gráficos.", "info")
         return
 
     df = pd.DataFrame(st.session_state.ls_history)
@@ -134,16 +165,16 @@ def show():
         df = df.set_index("tick")
 
     st.markdown("<div style='height:.25rem'></div>", unsafe_allow_html=True)
+
     st.markdown("""
-    <div style="font-size:13px; font-weight:600; color:#c9d1d9;
-                text-transform:uppercase; letter-spacing:.06em; margin-bottom:.75rem;">
-      📊 Analytics
-    </div>
+    <div style="background:#161b22; border:1px solid #21262d; border-radius:10px;
+                padding:1.25rem 1.5rem; margin-bottom:1rem;">
     """, unsafe_allow_html=True)
+
+    _section_heading("Analytics", "#8b949e")
 
     chart_cols = st.columns(2)
 
-    # Chart 1: attack funnel per tick
     with chart_cols[0]:
         st.markdown("<p style='font-size:13px; color:#8b949e; margin-bottom:4px'>Funil de ataque por tick</p>",
                     unsafe_allow_html=True)
@@ -153,7 +184,6 @@ def show():
         else:
             st.caption("Sem dados de funil disponíveis.")
 
-    # Chart 2: cumulative compromise
     with chart_cols[1]:
         st.markdown("<p style='font-size:13px; color:#8b949e; margin-bottom:4px'>Comprometidos acumulados</p>",
                     unsafe_allow_html=True)
@@ -162,14 +192,17 @@ def show():
         else:
             st.caption("Sem dados de comprometidos disponíveis.")
 
+    st.markdown("</div>", unsafe_allow_html=True)
+
     # MTTD callout
     if "mttd" in df.columns:
         mttd_val = df["mttd"].dropna()
         if not mttd_val.empty:
             first_detect = int(mttd_val.iloc[0])
-            st.info(
-                f"🕐 **MTTD (Mean Time to Detect):** primeiro agente comprometido detectado no tick **{first_detect}**.",
-                icon=None
+            _alert(
+                f"<strong>MTTD (Mean Time to Detect):</strong> "
+                f"primeiro agente comprometido detectado no tick <strong>{first_detect}</strong>.",
+                "info"
             )
 
     # Summary metrics
@@ -190,14 +223,14 @@ def show():
                          "Agentes que clicaram no link malicioso após abrir o email.")
 
     # Data table + export
-    with st.expander("📋 Histórico completo"):
+    with st.expander("Histórico completo"):
         styled = df.style.background_gradient(
             cmap="Reds",
             subset=[c for c in ["infected", "total"] if c in df.columns]
         )
         st.dataframe(styled, use_container_width=True)
         csv = df.reset_index().to_csv(index=False).encode("utf-8")
-        st.download_button("📥 Exportar CSV",
+        st.download_button("Exportar CSV",
                            data=csv,
                            file_name="cybertwin_report.csv",
                            mime="text/csv")

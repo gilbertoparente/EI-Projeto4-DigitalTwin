@@ -11,7 +11,7 @@ class MFA:
 
     def apply(self, agent) -> bool:
 
-        # Retorna True se o acesso for bem-sucedido.
+        # Retorna True se o acesso for bem-sucedido (atacante passa).
         # Retorna False se o MFA bloquear a tentativa de invasão.
 
         if not self.enabled:
@@ -19,9 +19,9 @@ class MFA:
 
         if random.random() < self.block_rate:
             return False  # MFA bloqueou
-        return True  # MFA falhou
+        return True  # MFA falhou (atacante passa mesmo com MFA ativo)
 
     def recover(self, agent):
         if self.enabled and agent.compromised:
-            if random.random() < (self.block_rate / 2): # Probabilidade menor de recuperação
+            if random.random() < (self.block_rate / 2):
                 agent.compromised = False

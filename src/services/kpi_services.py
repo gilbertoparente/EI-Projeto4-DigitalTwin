@@ -1,10 +1,6 @@
 from typing import Dict
 
 class KPIService:
-    """
-    Serviço responsável por calcular indicadores de desempenho (KPIs)
-    da postura de segurança da organização simulada.
-    """
 
     def compute(self, result: Dict[str, int], total_agents: int) -> Dict[str, float]:
         if total_agents <= 0:

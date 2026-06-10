@@ -3,10 +3,6 @@ import mesa
 
 class BaseAgent(mesa.Agent):
 
-    # Classe base para todos os agentes da simulação
-    # Herda de mesa.Agent, recebe unique_id e model automaticamente
-
-
     def __init__(
         self,
         unique_id: int,
