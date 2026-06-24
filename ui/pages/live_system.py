@@ -1,55 +1,98 @@
 import streamlit as st
-import time
-# Imports atualizados para a nova estrutura
+import pandas as pd
 from ui.api_client import step_simulation, get_status, get_graph
 
 
 def show():
     st.title("🟢 Live System Monitor")
-    st.markdown("Monitorização em tempo real do estado dos agentes e propagação de ameaças.")
+    st.markdown("Real-time telemetry of network nodes, topological state changes, and active threat propagation.")
 
-    # 1. Cabeçalho de Métricas (Dashboard Rápido)
+    # 1. Fetching current engine telemetry
     status = get_status()
 
     if "error" in status or status.get("status") == "idle":
-        st.warning("⚠️ O sistema está offline ou a simulação ainda não foi iniciada.")
+        st.warning(
+            "⚠️ The Simulation Engine is offline or has not been compiled yet. Please initialize your architecture in 'Experiments'.")
         return
 
-    # Layout de métricas em colunas
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Total Agents", status.get("agents", 0))
-    # Note: No seu SimulationService, estas métricas estão dentro de listas no dict 'metrics'
-    m2.metric("Tick Atual", status.get("tick", 0))
+    # Metric layout cards at the header (Fixed container constraints)
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Total Network Nodes", status.get("agents", 0))
+    m2.metric("Current Timeline Age", f"Day {status.get('tick', 0)}")
 
-    st.divider()
-
-    # 2. Controlo e Execução
-    col_ctrl, col_graph = st.columns([1, 2])
+    # 2. Timeline Controls & Topology Layout split
+    col_ctrl, col_graph = st.columns([2, 3])
 
     with col_ctrl:
-        st.subheader("Controls")
-        if st.button("🚀 Run Simulation Step", use_container_width=True, type="primary"):
-            with st.spinner("A processar tick..."):
-                data = step_simulation()
-                if "error" in data:
-                    st.error(data["error"])
-                else:
-                    st.success(f"Tick {data['tick']} concluído!")
-                    st.json(data["result"])
+        st.subheader("⏱️ Timeline Controls")
+
+        # New Feature: Let the user choose between single step or automated execution loops
+        run_mode = st.radio("Execution Strategy", ["Manual (Step-by-Step)", "Automatic (Full Run)"], horizontal=True)
+
+        if run_mode == "Manual (Step-by-Step)":
+            st.caption("Advance the social engineering campaign timeline by exactly 1 single unit (Tick/Day).")
+            if st.button("▶️ Advance 1 Single Step", width="stretch", type="primary"):
+                execute_steps(1)
+        else:
+            st.caption("Execute a sequence of days automatically until the malware vector stabilizes.")
+            steps_to_run = st.slider("Timeline Horizon (Days to simulate)", 5, 30, 10)
+            if st.button(f"🚀 Trigger Automated Run ({steps_to_run} Days)", width="stretch", type="primary"):
+                execute_steps(steps_to_run)
 
     with col_graph:
-        st.subheader("Network Topology")
+        st.subheader("🕸️ Topology Saturation")
         graph_data = get_graph()
 
-        # VERIFICAÇÃO DE SEGURANÇA:
-        # Se graph_data for um erro ou não tiver a chave 'nodes', mostramos um aviso
+        # Security constraint verification for graph metadata
         if isinstance(graph_data, dict) and "nodes" in graph_data and graph_data["nodes"]:
-            st.info(f"Rede com {len(graph_data['nodes'])} nós.")
-            infected_count = sum(1 for n in graph_data["nodes"] if n["state"] == "infected")
-            st.progress(infected_count / len(graph_data["nodes"]), text=f"Infeção: {infected_count} agentes")
+            total_nodes = len(graph_data["nodes"])
+            # Adaptação para o teu dict do backend ('infected' ou 'compromised' consoante o teu estado)
+            infected_count = sum(1 for n in graph_data["nodes"] if n.get("state") in ["infected", "compromised"])
+
+            st.info(f"Active communication fabric containing {total_nodes} live routing agents.")
+
+            # Progress bar indicating the structural blast radius of the phishing strike
+            saturation_ratio = infected_count / total_nodes if total_nodes > 0 else 0.0
+            st.progress(saturation_ratio,
+                        text=f"Blast Radius Saturation: {infected_count} / {total_nodes} agents compromised")
         else:
-            st.warning("Aguardando inicialização da rede...")
-            st.caption("Vá a 'Experiments' e clique em 'Initialize' primeiro.")
+            st.warning("Awaiting initial topological graph sync...")
+            st.caption("Make sure you have deployed the simulation instance inside the blueprint configuration tab.")
+
+
+def execute_steps(num_steps):
+    """Auxiliary internal loop engine to execute sequential steps and store metrics telemetry."""
+    # Inicializar o histórico global na sessão se não existir (usado pela página Analytics)
+    if "history" not in st.session_state:
+        st.session_state.history = []
+
+    with st.spinner(f"Simulating {num_steps} operational loops in background..."):
+        for _ in range(num_steps):
+            data = step_simulation()
+            if "error" in data:
+                st.error(f"Execution Error: {data['error']}")
+                break
+            elif "result" not in data:
+                st.warning("The model state was flushed. Please redeploy in Experiments.")
+                break
+            else:
+                entry = data["result"]
+                entry["tick"] = data["tick"]
+
+                # CORREÇÃO DA CHAVE: Se o teu backend enviar 'compromised', copiamos para 'infected'
+                # para que o gráfico do Analytics consiga ler a linha diária!
+                if "compromised" in entry and "infected" not in entry:
+                    entry["infected"] = entry["compromised"]
+                elif "infected" not in entry:
+                    entry["infected"] = 0
+
+                # Vai buscar o acumulado total da rede
+                entry["total_network_infection"] = data.get("total_compromised", 0)
+
+                st.session_state.history.append(entry)
+
+        st.success(f"Successfully processed {num_steps} simulation ticks!")
+        st.rerun()
 
 
 if __name__ == "__main__":

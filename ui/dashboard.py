@@ -1,6 +1,6 @@
 import streamlit as st
 
-# 1. Configuração Global da Página (Deve ser sempre o primeiro comando Streamlit)
+# 1. Global Page Configuration
 st.set_page_config(
     page_title="Cyber Digital Twin | IPVC",
     page_icon="🛡️",
@@ -8,9 +8,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. Estilização Customizada (Opcional, para um look mais "Cyber")
+# 2. Custom CSS to hide native navigation and tune metrics
 st.markdown("""
     <style>
+    [data-testid="stSidebarNav"] {
+        display: none !important;
+    }
     .main {
         background-color: #f5f7f9;
     }
@@ -23,24 +26,35 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 3. Sidebar de Navegação
+# 3. Sidebar - Clean Navigation Area Only
 with st.sidebar:
-    st.image("https://www.ipvc.pt/wp-content/uploads/2020/12/logo-ipvc.png", width=150)  # Exemplo de logo
-    st.title("🛡️ CyberTwin Panel")
-    st.info("Digital Twin para Simulação de Engenharia Social")
+    try:
+        st.image("https://www.ipvc.pt/wp-content/uploads/2020/12/logo-ipvc.png", width="stretch")
+    except:
+        st.subheader("🏫 IPVC")
 
-    page = st.radio("Navegação Principal", [
-        "🧪 Experiments",
-        "🟢 Live System",
-        "📊 Analytics",
-        "🕸️ Network View"
-    ])
+    st.title("🛡️ CyberTwin Panel")
+    st.caption("Digital Twin for Social Engineering Simulation")
+    st.divider()
+
+    # Radio Selection in English
+    page = st.radio(
+        "Main Navigation",
+        [
+            "🧪 Experiments",
+            "🟢 Live System",
+            "📊 Analytics",
+            "🕸️ Network View"
+        ],
+        label_visibility="collapsed"
+    )
 
     st.divider()
-    st.caption("Desenvolvido para Projeto de Cibersegurança @ IPVC")
+    st.info(
+        "💡 **Quick Tip:** Build and initialize your scenario in *Experiments* before running simulation steps in *Live System*.")
+    st.caption("Cybersecurity Project @ IPVC 2026")
 
-# 4. Encaminhamento de Páginas
-# Removemos o 'from ui.pages.X import *' e usamos chamadas explícitas à função show()
+# 4. Dynamic Page Routing
 if "Experiments" in page:
     from ui.pages import experiments
 

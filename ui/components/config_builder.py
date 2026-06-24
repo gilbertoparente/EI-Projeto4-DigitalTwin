@@ -3,103 +3,147 @@ import streamlit as st
 
 def build_simulation_config():
     """
-    Interface com opções globais na sidebar e configuração
-    detalhada dos departamentos no centro da página.
+    Main dashboard interface for configuring the organization and baseline defenses.
+    Threat vectors are omitted visually as they are handled dynamically via benchmarks.
     """
 
-    # --- SIDEBAR: OPÇÕES GLOBAIS ---
-    st.sidebar.header("⚙️ Opções Gerais")
+    st.title("🏢 Cyber Digital Twin Configuration")
+    st.info("Set up your organization framework and technical defense layers below.")
+    st.divider()
 
-    # Limite de 20 Departamentos
-    n_depts = st.sidebar.number_input(
-        "Número de Departamentos",
+    # --- SECTION 1: GENERAL & DEPARTMENTS ---
+    st.header("1. Organizational Structure")
+
+    n_depts = st.number_input(
+        "Number of Departments",
         min_value=1,
         max_value=20,
-        value=2
+        value=2,
+        help="Specify how many separate departments exist within the network topography."
     )
-
-    st.sidebar.divider()
-
-    # Configuração das Defesas na Sidebar para libertar espaço no centro
-    st.sidebar.subheader("🛡️ Medidas de Defesa")
-    mfa = st.sidebar.toggle("Ativar MFA", value=False)
-    training = st.sidebar.slider("Eficácia da Formação", 0.0, 1.0, 0.3)
-    segmentation = st.sidebar.slider("Nível de Segmentação", 0.0, 1.0, 0.5)
-
-    # --- CENTRO DA PÁGINA: DEPARTAMENTOS E ATAQUE ---
-    st.title("🏢 Configuração da Organização")
-    st.info("Configure os detalhes de cada departamento abaixo.")
 
     departments = []
 
-    # Criar colunas ou usar expanders no centro para os departamentos
     for i in range(int(n_depts)):
-        with st.container(border=True):  # Dá um aspeto de "card" a cada departamento
-            st.subheader(f"📍 Departamento {i + 1}")
+        with st.container(border=True):
+            st.subheader(f"📍 Department {i + 1}")
 
-            col_name, col_agents = st.columns([2, 3])
+            name = st.text_input(
+                f"Department Name",
+                value=f"Dept_{i + 1}",
+                key=f"dept_name_{i}"
+            )
 
-            with col_name:
-                name = st.text_input(
-                    f"Nome do Departamento",
-                    value=f"Dept_{i + 1}",
-                    key=f"dept_name_{i}"
-                )
+            st.caption("Staff Distribution by Hierarchical Level & Education:")
 
-            with col_agents:
-                # Limite de 100 Agentes
-                n_agents = st.slider(
-                    f"Quantidade de Agentes",
-                    1, 100, 5,
-                    key=f"n_agents_slider_{i}"
-                )
+            # Configuração detalhada por Nível Hierárquico
+            edu_weights = {"High School": 0.8, "Bachelor's Degree": 1.0, "Master's / PhD": 1.2}
 
-            # Expander para não ocupar demasiado espaço vertical com muitos agentes
-            with st.expander(f"👤 Configurar Níveis dos Agentes ({n_agents})"):
-                dept_agents = []
-                for j in range(n_agents):
-                    unique_key = f"hier_dept_{i}_agent_{j}"
+            # --- LEVEL 1 CONFIG ---
+            st.markdown("##### **🛠️ Level 1 - Operational Staff**")
+            col1_n, col1_ed = st.columns(2)
+            with col1_n:
+                n_level1 = st.slider("Total Staff (L1)", 1, 100, 5, key=f"n_l1_{i}")
+            with col1_ed:
+                edu_l1 = st.selectbox("Education (L1)", ["High School", "Bachelor's Degree", "Master's / PhD"], index=1,
+                                      key=f"edu_l1_{i}")
 
-                    # Usar colunas dentro do expander para ser mais compacto
-                    c1, c2 = st.columns([1, 1])
-                    with c1:
-                        st.caption(f"User {j + 1}")
-                    with c2:
-                        level = st.select_slider(
-                            f"Nível",
-                            options=[1, 2, 3],
-                            value=1,
-                            key=unique_key,
-                            label_visibility="collapsed"  # Esconde o texto para poupar espaço
-                        )
+            # --- LEVEL 2 CONFIG ---
+            st.markdown("##### **💼 Level 2 - Managers / Supervisors**")
+            col2_n, col2_ed = st.columns(2)
+            with col2_n:
+                n_level2 = st.slider("Total Managers (L2)", 0, 20, 1, key=f"n_l2_{i}")
+            with col2_ed:
+                edu_l2 = st.selectbox("Education (L2)", ["High School", "Bachelor's Degree", "Master's / PhD"], index=1,
+                                      key=f"edu_l2_{i}")
 
-                    dept_agents.append({
-                        "name": f"User_{i + 1}_{j + 1}",
-                        "hierarchy_level": level,
-                        "risk_propensity": 0.5,
-                        "awareness_level": 0.5
-                    })
+            # --- LEVEL 3 CONFIG ---
+            st.markdown("##### **👑 Level 3 - Directors / Executives**")
+            col3_n, col3_ed = st.columns(2)
+            with col3_n:
+                n_level3 = st.slider("Total Directors (L3)", 0, 5, 1, key=f"n_l3_{i}")
+            with col3_ed:
+                edu_l3 = st.selectbox("Education (L3)", ["High School", "Bachelor's Degree", "Master's / PhD"], index=2,
+                                      key=f"edu_l3_{i}")
+
+            # --- SOCIAL SETTINGS (Mantém-se partilhado no cluster do departamento) ---
+            st.divider()
+            st.caption("Departmental Trust Vector Settings:")
+            avg_friends = st.slider(
+                "Average Close Peer Connections",
+                1, 10, 3,
+                key=f"friends_{i}",
+                help="Specifies how many high-trust social links each employee establishes inside this cluster."
+            )
+
+            dept_agents = []
+            agent_counter = 1
+
+            # --- GERAR AGENTES LEVEL 1 ---
+            edu_mod_l1 = edu_weights[edu_l1]
+            for _ in range(n_level1):
+                dept_agents.append({
+                    "name": f"User_{i + 1}_{agent_counter}",
+                    "hierarchy_level": 1,
+                    "risk_propensity": 0.5,
+                    "awareness_level": min(1.0, 0.5 * edu_mod_l1),  # Aplica escolaridade do L1
+                    "education_profile": edu_l1,
+                    "trust_links_count": avg_friends
+                })
+                agent_counter += 1
+
+            # --- GERAR AGENTES LEVEL 2 ---
+            edu_mod_l2 = edu_weights[edu_l2]
+            for _ in range(n_level2):
+                dept_agents.append({
+                    "name": f"Manager_{i + 1}_{agent_counter}",
+                    "hierarchy_level": 2,
+                    "risk_propensity": 0.4,
+                    "awareness_level": min(1.0, 0.6 * edu_mod_l2),  # Aplica escolaridade do L2
+                    "education_profile": edu_l2,
+                    "trust_links_count": avg_friends
+                })
+                agent_counter += 1
+
+            # --- GERAR AGENTES LEVEL 3 ---
+            edu_mod_l3 = edu_weights[edu_l3]
+            for _ in range(n_level3):
+                dept_agents.append({
+                    "name": f"Director_{i + 1}_{agent_counter}",
+                    "hierarchy_level": 3,
+                    "risk_propensity": 0.3,
+                    "awareness_level": min(1.0, 0.7 * edu_mod_l3),  # Aplica escolaridade do L3
+                    "education_profile": edu_l3,
+                    "trust_links_count": avg_friends
+                })
+                agent_counter += 1
 
             departments.append({"name": name, "agents": dept_agents})
 
     st.divider()
 
-    # Configuração do Ataque no Centro (Final da página)
-    st.header("⚔️ Parâmetros de Ataque")
-    ca1, ca2 = st.columns(2)
-    with ca1:
-        attack_type = st.selectbox("Tipo de Ataque", ["Phishing", "Spear Phishing"])
-    with ca2:
-        click_rate = st.slider("Intensidade do Ataque (Base)", 0.0, 1.0, 0.5)
+    # --- SECTION 2: DEFENSE MECHANISMS ---
+    st.header("2. Mitigation & Defensive Posture")
 
-    # Montar o dicionário final
+    cd1, cd2, cd3 = st.columns(3)
+    with cd1:
+        st.markdown("**Technical Control**")
+        mfa = st.toggle("Enable Multi-Factor Authentication (MFA)", value=False)
+    with cd2:
+        st.markdown("**Human Control**")
+        training = st.slider("Security Awareness Training Effectiveness", 0.0, 1.0, 0.3)
+    with cd3:
+        st.markdown("**Network Control**")
+        segmentation = st.slider("Network Segmentation Level", 0.0, 1.0, 0.5)
+
+    # Dicionário de configuração final pronto a ser enviado para a API do Mesa
     config = {
         "organization": {
             "departments": departments
         },
         "attack": {
-            "type": attack_type,
-            "click_rate": click_rate
+            "type": "Phishing",
+            "click_rate": 0.5
         },
         "defense": {
             "mfa": mfa,
