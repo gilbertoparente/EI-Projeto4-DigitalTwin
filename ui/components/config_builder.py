@@ -26,10 +26,10 @@ def build_simulation_config():
         attack_col, role_col, edu_col = st.columns(3)
         with attack_col:
             st.subheader("Attack Formula")
-            global_intensity = st.slider("global_intensity", 0.0, 1.0, 0.5)
-            global_training = st.slider("global_training", 0.0, 1.0, 0.3)
+            global_intensity = st.slider("global_intensity", 0.0, 1.0, 0.3)
+            global_training = st.slider("global_training", 0.0, 1.0, 0.6)
             spear_bonus = st.slider("spear_bonus", 0.0, 1.0, 0.2)
-            homophily_multiplier = st.slider("homophily_multiplier", 1.0, 5.0, 2.0)
+            homophily_multiplier = st.slider("homophily_multiplier", 1.0, 5.0, 1.4)
 
         with role_col:
             st.subheader("role_base")
