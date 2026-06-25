@@ -31,9 +31,10 @@ with st.sidebar:
     st.caption("Digital Twin for Social Engineering Simulation")
     st.divider()
 
+    # Adicionada a opção "History" na navegação principal
     page = st.radio(
         "Main Navigation",
-        ["Experiments", "Live System", "Analytics", "Network View"],
+        ["Experiments", "Live System", "Analytics", "Network View", "History"],
         label_visibility="collapsed",
     )
 
@@ -58,3 +59,7 @@ elif page == "Network View":
     from ui.pages import network
 
     network.show()
+elif page == "History":
+    from ui.pages import history
+
+    history.show()

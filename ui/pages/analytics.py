@@ -90,15 +90,16 @@ def show():
         sim_days = st.number_input("Simulation days", min_value=1, max_value=365, value=15)
 
         if st.button("🚀 Run Experiments", type="primary", use_container_width=True):
-            with st.spinner(f"Simulating {selected_attack}..."):
+            with st.spinner("Simulating scenarios..."):
+                # Passamos o nome exato como o último argumento de cada cenário
                 st.session_state.exp1_history = run_premium_simulation(
-                    _scenario_config(base_config, selected_attack, global_intensity, training_eff, 0.0, False),
-                    int(sim_days))
+                    _scenario_config(base_config, selected_attack, global_intensity, training_eff, 0.0, False,
+                                     "No training"), int(sim_days))
                 st.session_state.exp2_history = run_premium_simulation(
-                    _scenario_config(base_config, selected_attack, global_intensity, training_eff, 0.5, False),
-                    int(sim_days))
+                    _scenario_config(base_config, selected_attack, global_intensity, training_eff, 0.5, False,
+                                     "50% training coverage"), int(sim_days))
                 st.session_state.exp3_history = run_premium_simulation(
-                    _scenario_config(base_config, selected_attack, global_intensity, training_eff, 0.0, True),
+                    _scenario_config(base_config, selected_attack, global_intensity, training_eff, 0.0, True, "MFA"),
                     int(sim_days))
             st.rerun()
 
@@ -142,8 +143,13 @@ def show():
             st.info("Run the experiments to see the Strategic Matrix.")
 
 
-def _scenario_config(base_config, attack_type, intensity, training_effectiveness, training_coverage, mfa):
+def _scenario_config(base_config, attack_type, intensity, training_effectiveness, training_coverage, mfa, label):
+    import copy
     config = copy.deepcopy(base_config)
+
+    # Injeta a etiqueta correta para a Base de Dados ler sem margem para erros
+    config["experiment_label"] = label
+
     config["attack"] = {"type": attack_type}
     config.setdefault("attack_params", {})
     config["attack_params"]["global_intensity"] = intensity
