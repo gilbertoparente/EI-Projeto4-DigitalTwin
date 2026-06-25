@@ -39,10 +39,6 @@ O sistema utiliza uma arquitetura baseada em microsserviços, separando o motor 
 
 ## 🛠️ Instalação
 
-1. Clonar o repositório:
+1. Instalar dependencias
    ```bash
-   git clone <link-do-repositorio>
-
-2. Instalar dependencias
-   ```bash
-pip install -r requirements.txt
+   pip install -r requirements.txt
