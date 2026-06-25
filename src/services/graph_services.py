@@ -26,6 +26,7 @@ class GraphService:
                 "department": agent.department,
                 "state": state,
                 "hierarchy": agent.hierarchy_level,
+                "hierarchy_level": agent.hierarchy_level,
                 # Atributos extras para tooltips na UI
                 "awareness": round(agent.awareness_level, 2),
                 "risk": round(agent.risk_propensity, 2)
