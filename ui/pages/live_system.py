@@ -15,7 +15,7 @@ def show():
             "⚠️ The Simulation Engine is offline or has not been compiled yet. Please initialize your architecture in 'Experiments'.")
         return
 
-    # Metric layout cards at the header (Fixed container constraints)
+    # Metric layout cards at the header
     m1, m2, m3 = st.columns(3)
     m1.metric("Total Network Nodes", status.get("agents", 0))
     m2.metric("Current Timeline Age", f"Day {status.get('tick', 0)}")
@@ -26,17 +26,17 @@ def show():
     with col_ctrl:
         st.subheader("⏱️ Timeline Controls")
 
-        # New Feature: Let the user choose between single step or automated execution loops
+        # Execution strategy selection
         run_mode = st.radio("Execution Strategy", ["Manual (Step-by-Step)", "Automatic (Full Run)"], horizontal=True)
 
         if run_mode == "Manual (Step-by-Step)":
             st.caption("Advance the social engineering campaign timeline by exactly 1 single unit (Tick/Day).")
-            if st.button("▶️ Advance 1 Single Step", width="stretch", type="primary"):
+            if st.button("▶️ Advance 1 Single Step", use_container_width=True, type="primary"):
                 execute_steps(1)
         else:
             st.caption("Execute a sequence of days automatically until the malware vector stabilizes.")
             steps_to_run = st.slider("Timeline Horizon (Days to simulate)", 5, 30, 10)
-            if st.button(f"🚀 Trigger Automated Run ({steps_to_run} Days)", width="stretch", type="primary"):
+            if st.button(f"🚀 Trigger Automated Run ({steps_to_run} Days)", use_container_width=True, type="primary"):
                 execute_steps(steps_to_run)
 
     with col_graph:
@@ -46,7 +46,6 @@ def show():
         # Security constraint verification for graph metadata
         if isinstance(graph_data, dict) and "nodes" in graph_data and graph_data["nodes"]:
             total_nodes = len(graph_data["nodes"])
-            # Adaptação para o teu dict do backend ('infected' ou 'compromised' consoante o teu estado)
             infected_count = sum(1 for n in graph_data["nodes"] if n.get("state") in ["infected", "compromised"])
 
             st.info(f"Active communication fabric containing {total_nodes} live routing agents.")
@@ -62,7 +61,7 @@ def show():
 
 def execute_steps(num_steps):
     """Auxiliary internal loop engine to execute sequential steps and store metrics telemetry."""
-    # Inicializar o histórico global na sessão se não existir (usado pela página Analytics)
+    # Initialize global history in session if it doesn't exist
     if "history" not in st.session_state:
         st.session_state.history = []
 
@@ -79,14 +78,13 @@ def execute_steps(num_steps):
                 entry = data["result"]
                 entry["tick"] = data["tick"]
 
-                # CORREÇÃO DA CHAVE: Se o teu backend enviar 'compromised', copiamos para 'infected'
-                # para que o gráfico do Analytics consiga ler a linha diária!
+                # Logic correction: map 'compromised' to 'infected' for visualization consistency
                 if "compromised" in entry and "infected" not in entry:
                     entry["infected"] = entry["compromised"]
                 elif "infected" not in entry:
                     entry["infected"] = 0
 
-                # Vai buscar o acumulado total da rede
+                # Capture total network accumulation
                 entry["total_network_infection"] = data.get("total_compromised", 0)
 
                 st.session_state.history.append(entry)

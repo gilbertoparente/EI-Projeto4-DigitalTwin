@@ -4,20 +4,19 @@ from ui.api_client import start_simulation
 
 
 def show():
-    # Traduzido para Inglês para consistência com o resto do Dashboard
     st.title("🧪 Simulation Setup & Experiments")
     st.markdown("""
     Configure your organization framework, threat vectors, and mitigation levels below. 
     This blueprint will be transmitted to the **Digital Twin Engine** to compile the stochastic model graph.
     """)
 
-    # 1. Construtor de Configuração (que já traduzimos para Inglês)
+    # 1. Configuration Builder
     config = build_simulation_config()
 
     st.divider()
 
-    # 2. Botão de Inicialização (Corrigido use_container_width -> width="stretch")
-    if st.button("🚀 Initialize Digital Twin Engine", width="stretch", type="primary"):
+    # 2. Initialization Button
+    if st.button("🚀 Initialize Digital Twin Engine", use_container_width=True, type="primary"):
         with st.spinner("Transmitting architecture to simulation cluster..."):
             result = start_simulation(config)
 
@@ -26,14 +25,14 @@ def show():
             else:
                 st.success("✅ Digital Twin compiled and mapped successfully onto backend environment!")
 
-                # MUDANÇA CRUCIAL AQUI: Só guarda a config na sessão se a API aceitou com sucesso
+                # CRITICAL CHANGE: Only store config in session state if API success
                 st.session_state["current_config"] = config
 
-                # Resumo rápido em Inglês das métricas devolvidas pela API
+                # Summary of metrics returned by the API
                 col1, col2 = st.columns(2)
                 with col1:
-                    # Tenta ler 'agents' ou o teu campo 'agentes' vindo da API
-                    total_agents = result.get("agents", result.get("agentes", 0))
+                    # Attempting to read 'agents' from the API response
+                    total_agents = result.get("agents", 0)
                     st.metric("Total Compiled Agents", total_agents)
                 with col2:
                     st.metric("Engine Runtime Status", "Ready")

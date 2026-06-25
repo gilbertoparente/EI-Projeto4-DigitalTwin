@@ -1,13 +1,16 @@
-import streamlit as st
+import copy
 import pandas as pd
 import requests
+import streamlit as st
+
+EXPERIMENT_LABELS = {
+    "no_training": "No training",
+    "half_training": "50% training coverage",
+    "mfa": "MFA",
+}
 
 
 def run_premium_simulation(config, total_ticks):
-    """
-    Runs the simulation loop for the exact number of ticks defined
-    by the global Live System state.
-    """
     try:
         requests.post("http://127.0.0.1:8000/start", json=config)
         history = []
@@ -15,237 +18,141 @@ def run_premium_simulation(config, total_ticks):
 
         for tick in range(1, total_ticks + 1):
             response = requests.get("http://127.0.0.1:8000/step").json()
-
-            # Extrair dados do 'result' ou usar fallback seguro
             result_data = response.get("result", {})
             current_total = response.get("total_compromised", result_data.get("total_network_infection", 0))
 
-            # --- CORREÇÃO DO BUG DO ZERO ---
             opened = result_data.get("opened", 0)
             clicked = result_data.get("clicked", 0)
-
-            if "infected" in result_data and result_data["infected"] > 0:
-                infected_today = result_data["infected"]
-            else:
-                infected_today = max(0, current_total - previous_total)
-
+            infected_today = result_data.get("infected", max(0, current_total - previous_total))
             previous_total = current_total
 
-            history.append({
-                "tick": tick,
-                "opened": opened,
-                "clicked": clicked,
-                "infected": infected_today,
-                "total_network_infection": current_total
-            })
+            history.append(
+                {
+                    "tick": tick,
+                    "opened": opened,
+                    "clicked": clicked,
+                    "infected": infected_today,
+                    "total_network_infection": current_total,
+                }
+            )
 
         return history
-    except Exception as e:
-        # Fallback contextualizado caso a API falhe (herda dinamicamente o tamanho)
-        return [{"tick": t, "opened": max(0, 20 - t), "clicked": max(0, 15 - t), "infected": int(t % 3 == 0), "total_network_infection": min(100, t * 2)} for t in range(1, total_ticks + 1)]
+    except Exception:
+        return []
 
 
-def render_individual_tab(history, exp_title, exp_description):
-    """Helper function to render standard charts and logs for an individual experiment."""
-    st.subheader(exp_title)
-    st.caption(exp_description)
+def render_individual_tab(history, title, description):
+    st.subheader(title)
+    st.caption(description)
 
     if not history:
-        st.info("💡 No simulation data available for this scenario yet. Run the Global Executive Matrix in Tab 4 to populate all environments simultaneously.")
+        st.info("Run the experiments using the control panel above.")
         return
 
     df = pd.DataFrame(history).set_index("tick")
-
-    # Gráficos Individuais da Experiência
-    st.markdown("#### 📉 Internal Attack Funnel (Daily Metrics)")
+    st.markdown("#### Attack Funnel")
     st.line_chart(df[["opened", "clicked", "infected"]])
 
-    st.markdown("#### ☣️ Cumulative Infection Curve")
+    st.markdown("#### Cumulative Compromise")
     st.area_chart(df["total_network_infection"])
 
-    # Tabela de Logs Históricos (Agora vai mostrar TODAS as linhas geradas)
-    st.markdown("#### 📋 Historical Data Logs")
-    styled_df = df.style.background_gradient(cmap='Reds', subset=['infected', 'total_network_infection'])
+    st.markdown("#### Logs")
+    styled_df = df.style.background_gradient(cmap="Reds", subset=["infected", "total_network_infection"])
     st.dataframe(styled_df, use_container_width=True)
 
 
 def show():
-    st.title("📊 Enterprise Analytics & Benchmarking")
-    st.markdown("Deep dive into the telemetry of individual test beds or evaluate cross-posture defensive resilience.")
+    st.title("Analytics & Benchmarking")
+    st.markdown("Compare the configured attack against three defensive experiments.")
 
     if "current_config" not in st.session_state:
-        st.warning("⚠️ Baseline blueprint missing. Please customize your framework parameters in the 'Experiments' screen first.")
+        st.warning("Configure and initialize the Digital Twin on the Experiments page first.")
         return
 
     base_config = st.session_state["current_config"]
+    attack_configured = base_config.get("attack", {}).get("type", "Phishing")
 
-    # Inicializar os históricos individuais na sessão para não se perderem
-    if "exp1_history" not in st.session_state: st.session_state.exp1_history = []
-    if "exp2_history" not in st.session_state: st.session_state.exp2_history = []
-    if "exp3_history" not in st.session_state: st.session_state.exp3_history = []
+    # Inicialização de estado
+    for key in ["exp1_history", "exp2_history", "exp3_history"]:
+        if key not in st.session_state: st.session_state[key] = []
 
-    # Criação das 4 abas
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "🛑 Experiment 1 Logs",
-        "🎯 Experiment 2 Logs",
-        "🔑 Experiment 3 Logs",
-        "🏆 Strategic Executive Report"
-    ])
+    # --- 🌍 CONTROLOS GLOBAIS (NO TOPO) ---
+    with st.container(border=True):
+        st.subheader("Global Simulation Parameters")
+        c1, c2, c3 = st.columns(3)
+        selected_attack = c1.radio("Configured attack", ["Phishing", "Spear Phishing"],
+                                   index=0 if attack_configured == "Phishing" else 1)
+        global_intensity = c2.slider("Global Intensity", 0.0, 1.0,
+                                     float(base_config.get("attack_params", {}).get("global_intensity", 0.5)))
+        training_eff = c3.slider("Training Effectiveness", 0.0, 1.0,
+                                 float(base_config.get("attack_params", {}).get("global_training", 0.3)))
 
-    # Rendição das Abas de Log Individual
+        sim_days = st.number_input("Simulation days", min_value=1, max_value=365, value=15)
+
+        if st.button("🚀 Run Experiments", type="primary", use_container_width=True):
+            with st.spinner(f"Simulating {selected_attack}..."):
+                st.session_state.exp1_history = run_premium_simulation(
+                    _scenario_config(base_config, selected_attack, global_intensity, training_eff, 0.0, False),
+                    int(sim_days))
+                st.session_state.exp2_history = run_premium_simulation(
+                    _scenario_config(base_config, selected_attack, global_intensity, training_eff, 0.5, False),
+                    int(sim_days))
+                st.session_state.exp3_history = run_premium_simulation(
+                    _scenario_config(base_config, selected_attack, global_intensity, training_eff, 0.0, True),
+                    int(sim_days))
+            st.rerun()
+
+    # --- 📊 TABS ---
+    tab1, tab2, tab3, tab4 = st.tabs(
+        [EXPERIMENT_LABELS["no_training"], EXPERIMENT_LABELS["half_training"], EXPERIMENT_LABELS["mfa"], "Report"])
+
     with tab1:
-        render_individual_tab(
-            st.session_state.exp1_history,
-            "Experiment 1: Standard Phishing Posture",
-            "Baseline matrix with standard email phishing lures, active network propagation, and zero technical countermeasures."
-        )
-
+        render_individual_tab(st.session_state.exp1_history, EXPERIMENT_LABELS["no_training"], "Base configuration.")
     with tab2:
-        render_individual_tab(
-            st.session_state.exp2_history,
-            "Experiment 2: Targeted Spear Phishing Posture",
-            "Advanced threat matrix simulating socially engineered payloads tailored specifically to departmental profiles."
-        )
-
+        render_individual_tab(st.session_state.exp2_history, EXPERIMENT_LABELS["half_training"], "50% training.")
     with tab3:
-        render_individual_tab(
-            st.session_state.exp3_history,
-            "Experiment 3: Cryptographic MFA Shield",
-            "Mitigation environment where multi-factor technical enforcement halts lateral movement and limits credential reuse."
-        )
+        render_individual_tab(st.session_state.exp3_history, EXPERIMENT_LABELS["mfa"], "MFA enabled.")
 
-    # ==========================================
-    # TAB 4: COMPARAÇÃO E RELATÓRIO EXECUTIVO (Corrigido Hierarquicamente)
-    # ==========================================
     with tab4:
-        st.subheader("🏆 Multi-Scenario Cross Evaluation Framework")
-        st.write("Trigger and contrast all 3 target experiments simultaneously to draw compliance and mitigation conclusions.")
+        st.subheader("Strategic Matrix & Report")
+        if st.session_state.exp1_history:
+            histories = [st.session_state.exp1_history, st.session_state.exp2_history, st.session_state.exp3_history]
+            labels = [EXPERIMENT_LABELS["no_training"], EXPERIMENT_LABELS["half_training"], EXPERIMENT_LABELS["mfa"]]
+            df_compare = pd.DataFrame({label: [day["total_network_infection"] for day in history] for label, history in
+                                       zip(labels, histories)})
+            df_compare.index = range(1, len(df_compare) + 1)
 
-        # --- ESTRATÉGIA DE DETEÇÃO AUTOMÁTICA DO LIVE SYSTEM ---
-        # 1. Primeiro procuramos se já existe um histórico real corrido no teu Live System
-        live_history = st.session_state.get("history", st.session_state.get("simulation_history", []))
-
-        # 2. Se o histórico do Live System existir, usamos o tamanho dele.
-        if live_history:
-            global_ticks_target = len(live_history)
-            st.markdown(f"#### 🛠️ Global Calibration Knobs")
-            st.success(f"📟 **Auto-Sync Active:** Detected **{global_ticks_target} days** executed in your Live System record.")
-        else:
-            # Fallback dinâmico coerente com o teu estado global
-            global_ticks_target = st.session_state.get("auto_ticks", st.session_state.get("ticks", st.session_state.get("sim_days", 15)))
-            st.markdown(f"#### 🛠️ Global Calibration Knobs")
-            st.caption(f"ℹ️ *Simulation scale currently set to **{global_ticks_target} days** (Live System state).*")
-
-        c_p1, c_p2 = st.columns(2)
-        with c_p1:
-            global_intensity = st.slider("Base Attack Severity Modifier", 0.1, 1.0, 0.6)
-        with c_p2:
-            global_training = st.slider("Employee Training Quality (Awareness)", 0.0, 1.0, 0.4)
-
-        st.divider()
-
-        if st.button("🚀 Execute Global Matrix & Sync All Tabs", type="primary", use_container_width=True):
-            with st.spinner(f"Compiling parallel stochastic agent loops across {global_ticks_target} days..."):
-                # --- CONFIG & RUN EXP 1 ---
-                config_1 = dict(base_config)
-                config_1["attack"] = {"type": "Phishing", "click_rate": global_intensity}
-                config_1["defense"] = {"mfa": False, "training": global_training, "segmentation": base_config["defense"].get("segmentation", 0.5)}
-                st.session_state.exp1_history = run_premium_simulation(config_1, total_ticks=int(global_ticks_target))
-
-                # --- CONFIG & RUN EXP 2 ---
-                config_2 = dict(base_config)
-                config_2["attack"] = {"type": "Spear Phishing", "click_rate": min(global_intensity + 0.2, 1.0)}
-                config_2["defense"] = {"mfa": False, "training": global_training, "segmentation": base_config["defense"].get("segmentation", 0.5)}
-                st.session_state.exp2_history = run_premium_simulation(config_2, total_ticks=int(global_ticks_target))
-
-                # --- CONFIG & RUN EXP 3 ---
-                config_3 = dict(base_config)
-                config_3["attack"] = {"type": "Spear Phishing", "click_rate": min(global_intensity + 0.2, 1.0)}
-                config_3["defense"] = {"mfa": True, "training": global_training, "segmentation": base_config["defense"].get("segmentation", 0.5)}
-                st.session_state.exp3_history = run_premium_simulation(config_3, total_ticks=int(global_ticks_target))
-
-                st.success("🎉 Matrix benchmarks processed! Data successfully synchronized across all individual log tabs.")
-                st.rerun()
-
-        # Renderizar a análise de dados apenas se existirem dados calculados
-        if st.session_state.exp1_history and st.session_state.exp2_history and st.session_state.exp3_history:
-
-            res_1 = [day["total_network_infection"] for day in st.session_state.exp1_history]
-            res_2 = [day["total_network_infection"] for day in st.session_state.exp2_history]
-            res_3 = [day["total_network_infection"] for day in st.session_state.exp3_history]
-
-            ticks = list(range(1, len(res_1) + 1))
-            df_compare = pd.DataFrame({
-                "Timeline Step (Days)": ticks,
-                "Experiment 1: Baseline Phishing": res_1,
-                "Experiment 2: Advanced Spear Phishing": res_2,
-                "Experiment 3: Mitigated MFA Environment": res_3
-            }).set_index("Timeline Step (Days)")
-
-            st.markdown("### 📈 Comprehensive Infection Velocity Benchmark")
+            st.markdown("### Cumulative compromise comparison")
             st.line_chart(df_compare)
 
-            # --- MATRIZ COMPARATIVA VISUAL ---
-            st.divider()
-            st.markdown("### 🎛️ Scenario Performance Matrix")
-
             matrix_data = {
-                "Metric / Parameter": [
-                    "Attack Vector Used",
-                    "MFA Technical Shield",
-                    "Initial Infection Velocity",
-                    "Peak Daily New Infections",
-                    f"Final Compromised Nodes (Day {global_ticks_target})",
-                    "Organizational Security Margin"
-                ],
-                "Experiment 1 (Standard Phishing)": [
-                    "Generic Phishing",
-                    "❌ Disabled",
-                    "Moderate",
-                    f"{max([day['infected'] for day in st.session_state.exp1_history])} nodes",
-                    f"{res_1[-1]} nodes",
-                    "Low (High Exposure)"
-                ],
-                "Experiment 2 (Spear Phishing)": [
-                    "Targeted Spear Phishing",
-                    "❌ Disabled",
-                    "⚠️ EXPLOSIVE",
-                    f"{max([day['infected'] for day in st.session_state.exp2_history])} nodes",
-                    f"{res_2[-1]} nodes",
-                    "Critical (Total Breach Risk)"
-                ],
-                "Experiment 3 (MFA Defense)": [
-                    "Targeted Spear Phishing",
-                    "🔒 ENFORCED",
-                    "Stagnant / Controlled",
-                    f"{max([day['infected'] for day in st.session_state.exp3_history])} nodes",
-                    f"{res_3[-1]} nodes",
-                    "🛡️ High Resilience"
-                ]
+                "Metric": ["Attack used", "Training coverage", "MFA", "Daily peak", "Final compromised nodes"],
+                EXPERIMENT_LABELS["no_training"]: [selected_attack, "0%", "Inactive",
+                                                   f"{max(d['infected'] for d in st.session_state.exp1_history)}",
+                                                   f"{df_compare[EXPERIMENT_LABELS['no_training']].iloc[-1]}"],
+                EXPERIMENT_LABELS["half_training"]: [selected_attack, "50%", "Inactive",
+                                                     f"{max(d['infected'] for d in st.session_state.exp2_history)}",
+                                                     f"{df_compare[EXPERIMENT_LABELS['half_training']].iloc[-1]}"],
+                EXPERIMENT_LABELS["mfa"]: [selected_attack, "0%", "Active",
+                                           f"{max(d['infected'] for d in st.session_state.exp3_history)}",
+                                           f"{df_compare[EXPERIMENT_LABELS['mfa']].iloc[-1]}"],
             }
-
-            st.table(pd.DataFrame(matrix_data).set_index("Metric / Parameter"))
-
-            # --- CORRELAÇÃO CIENTÍFICA COM OS CONCEITOS ADICIONADOS ---
-            st.divider()
-            st.markdown("### 🧠 Agent Behavioral Correlates & Academic Significance")
-
-            with st.container(border=True):
-                st.markdown(f"""
-                #### 🎓 1. The Impact of Education Profiles (Literacy Modifier)
-                * **Concept Applied:** Human Awareness Calibration via Agent Attributes.
-                * **Behavioral Correlation:** By setting different *Education Profiles* (e.g., Master's vs High School) in the configuration, the model dynamically scales the `awareness_level`. The results show that departments with higher instruction baselines natively absorb generic lures better, creating a natural delay in the **Experiment 1** velocity curves.
-
-                #### 🤝 2. The Trust Vector Dynamics (Close Peer Connections / Friends)
-                * **Concept Applied:** Social Homophily and Credential-Based Lateral Spread.
-                * **Behavioral Correlation:** The *Average Close Peer Connections* parameter defines high-trust social edges. In **Experiment 2 (Spear Phishing)**, when an agent is compromised, they leverage these friendship links. Because agents have a lower perceived risk for internal peers, the click probability doubles. This explains the **explosive daily spike** seen in the matrix for Scenario 2.
-
-                #### 🛡️ 3. Technical vs. Human Control Limits (The MFA Firebreak)
-                * **Concept Applied:** Cryptographic Mitigation Layer.
-                * **Behavioral Correlation:** **Experiment 3** proves that even when the social vector wins (the friend clicks due to trust and lower education defense), **MFA acts as a hard logical barrier**. It stops the Mesa Engine from validating the stolen token during lateral movement, effectively flattening the cumulative curve to just **{res_3[-1]} nodes**, proving that technical controls are mandatory to support human vulnerabilities.
-                """)
+            st.table(pd.DataFrame(matrix_data).set_index("Metric"))
         else:
-            st.info("💡 Click the button above to run the global multi-scenario analysis and unpack structural risk metrics.")
+            st.info("Run the experiments to see the Strategic Matrix.")
+
+
+def _scenario_config(base_config, attack_type, intensity, training_effectiveness, training_coverage, mfa):
+    config = copy.deepcopy(base_config)
+    config["attack"] = {"type": attack_type}
+    config.setdefault("attack_params", {})
+    config["attack_params"]["global_intensity"] = intensity
+    config["attack_params"]["global_training"] = training_effectiveness
+    config.setdefault("defense", {})
+    config["defense"]["mfa"] = mfa
+    config["defense"]["training"] = training_effectiveness
+    config["defense"]["training_coverage"] = training_coverage
+    return config
 
 
 if __name__ == "__main__":

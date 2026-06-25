@@ -1,155 +1,139 @@
 import streamlit as st
 
 
-def build_simulation_config():
-    """
-    Main dashboard interface for configuring the organization and baseline defenses.
-    Threat vectors are omitted visually as they are handled dynamically via benchmarks.
-    """
+EDUCATION_LEVELS = ["High School", "Bachelor's Degree", "Master's / PhD"]
 
-    st.title("🏢 Cyber Digital Twin Configuration")
-    st.info("Set up your organization framework and technical defense layers below.")
+
+def build_simulation_config():
+    st.title("Cyber Digital Twin Configuration")
+    st.info("Set up your organization, attack model, and defensive posture.")
     st.divider()
 
-    # --- SECTION 1: GENERAL & DEPARTMENTS ---
-    st.header("1. Organizational Structure")
+    st.header("1. Scientific Model Parameters")
+    with st.expander("Manual calibration", expanded=True):
+        st.markdown(
+            """
+            **Generic Phishing:** P(click) = global_intensity x (1 - global_training)
 
-    n_depts = st.number_input(
-        "Number of Departments",
-        min_value=1,
-        max_value=20,
-        value=2,
-        help="Specify how many separate departments exist within the network topography."
-    )
+            **Spear Phishing:** P(click) = min(1.0, global_intensity + spear_bonus)
 
+            **Individual Situational Awareness:** awareness = role_base x education_profile
+
+            **Social Homophily Bias:** if the email source is a trusted node, P(click) = P(click) x homophily_multiplier
+            """
+        )
+
+        attack_col, role_col, edu_col = st.columns(3)
+        with attack_col:
+            st.subheader("Attack Formula")
+            global_intensity = st.slider("global_intensity", 0.0, 1.0, 0.5)
+            global_training = st.slider("global_training", 0.0, 1.0, 0.3)
+            spear_bonus = st.slider("spear_bonus", 0.0, 1.0, 0.2)
+            homophily_multiplier = st.slider("homophily_multiplier", 1.0, 5.0, 2.0)
+
+        with role_col:
+            st.subheader("role_base")
+            w_l1 = st.slider("Role base L1", 0.0, 1.0, 0.5)
+            w_l2 = st.slider("Role base L2", 0.0, 1.0, 0.6)
+            w_l3 = st.slider("Role base L3", 0.0, 1.0, 0.7)
+
+        with edu_col:
+            st.subheader("education_profile")
+            edu_hs = st.slider("High School", 0.0, 2.0, 0.8)
+            edu_ba = st.slider("Bachelor's Degree", 0.0, 2.0, 1.0)
+            edu_ma = st.slider("Master's / PhD", 0.0, 2.0, 1.2)
+
+    weights = {
+        "cargo": {1: w_l1, 2: w_l2, 3: w_l3},
+        "edu": {
+            "High School": edu_hs,
+            "Bachelor's Degree": edu_ba,
+            "Master's / PhD": edu_ma,
+        },
+    }
+
+    generic_probability = global_intensity * (1 - global_training)
+    spear_probability = min(1.0, global_intensity + spear_bonus)
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Generic phishing P(click)", f"{generic_probability:.2f}")
+    m2.metric("Spear phishing P(click)", f"{spear_probability:.2f}")
+    m3.metric("Trusted-link multiplier", f"x{homophily_multiplier:.1f}")
+
+    st.header("2. Attack Selection")
+    attack_type = st.radio("Attack type", ["Phishing", "Spear Phishing"], horizontal=True)
+
+    st.header("3. Organizational Structure")
+    n_depts = st.number_input("Number of Departments", min_value=1, max_value=20, value=2)
     departments = []
 
     for i in range(int(n_depts)):
         with st.container(border=True):
-            st.subheader(f"📍 Department {i + 1}")
+            name = st.text_input(f"Department {i + 1} Name", value=f"Dept_{i + 1}", key=f"d_{i}")
+            n_l1, n_l2, n_l3 = st.columns(3)
+            num1 = n_l1.number_input("Staff L1", 1, 100, 5, key=f"n1_{i}")
+            num2 = n_l2.number_input("Managers L2", 0, 20, 1, key=f"n2_{i}")
+            num3 = n_l3.number_input("Directors L3", 0, 5, 1, key=f"n3_{i}")
 
-            name = st.text_input(
-                f"Department Name",
-                value=f"Dept_{i + 1}",
-                key=f"dept_name_{i}"
-            )
-
-            st.caption("Staff Distribution by Hierarchical Level & Education:")
-
-            # Configuração detalhada por Nível Hierárquico
-            edu_weights = {"High School": 0.8, "Bachelor's Degree": 1.0, "Master's / PhD": 1.2}
-
-            # --- LEVEL 1 CONFIG ---
-            st.markdown("##### **🛠️ Level 1 - Operational Staff**")
-            col1_n, col1_ed = st.columns(2)
-            with col1_n:
-                n_level1 = st.slider("Total Staff (L1)", 1, 100, 5, key=f"n_l1_{i}")
-            with col1_ed:
-                edu_l1 = st.selectbox("Education (L1)", ["High School", "Bachelor's Degree", "Master's / PhD"], index=1,
-                                      key=f"edu_l1_{i}")
-
-            # --- LEVEL 2 CONFIG ---
-            st.markdown("##### **💼 Level 2 - Managers / Supervisors**")
-            col2_n, col2_ed = st.columns(2)
-            with col2_n:
-                n_level2 = st.slider("Total Managers (L2)", 0, 20, 1, key=f"n_l2_{i}")
-            with col2_ed:
-                edu_l2 = st.selectbox("Education (L2)", ["High School", "Bachelor's Degree", "Master's / PhD"], index=1,
-                                      key=f"edu_l2_{i}")
-
-            # --- LEVEL 3 CONFIG ---
-            st.markdown("##### **👑 Level 3 - Directors / Executives**")
-            col3_n, col3_ed = st.columns(2)
-            with col3_n:
-                n_level3 = st.slider("Total Directors (L3)", 0, 5, 1, key=f"n_l3_{i}")
-            with col3_ed:
-                edu_l3 = st.selectbox("Education (L3)", ["High School", "Bachelor's Degree", "Master's / PhD"], index=2,
-                                      key=f"edu_l3_{i}")
-
-            # --- SOCIAL SETTINGS (Mantém-se partilhado no cluster do departamento) ---
-            st.divider()
-            st.caption("Departmental Trust Vector Settings:")
-            avg_friends = st.slider(
-                "Average Close Peer Connections",
-                1, 10, 3,
-                key=f"friends_{i}",
-                help="Specifies how many high-trust social links each employee establishes inside this cluster."
-            )
+            edu_l1 = st.selectbox("Education L1", EDUCATION_LEVELS, index=1, key=f"edu1_{i}")
+            edu_l2 = st.selectbox("Education L2", EDUCATION_LEVELS, index=1, key=f"edu2_{i}")
+            edu_l3 = st.selectbox("Education L3", EDUCATION_LEVELS, index=2, key=f"edu3_{i}")
+            avg_friends = st.slider("trust_links_count", 1, 10, 3, key=f"friends_{i}")
 
             dept_agents = []
             agent_counter = 1
 
-            # --- GERAR AGENTES LEVEL 1 ---
-            edu_mod_l1 = edu_weights[edu_l1]
-            for _ in range(n_level1):
-                dept_agents.append({
-                    "name": f"User_{i + 1}_{agent_counter}",
-                    "hierarchy_level": 1,
-                    "risk_propensity": 0.5,
-                    "awareness_level": min(1.0, 0.5 * edu_mod_l1),  # Aplica escolaridade do L1
-                    "education_profile": edu_l1,
-                    "trust_links_count": avg_friends
-                })
+            for _ in range(int(num1)):
+                dept_agents.append(_make_agent(i, agent_counter, "User", 1, 0.5, edu_l1, avg_friends, weights))
                 agent_counter += 1
 
-            # --- GERAR AGENTES LEVEL 2 ---
-            edu_mod_l2 = edu_weights[edu_l2]
-            for _ in range(n_level2):
-                dept_agents.append({
-                    "name": f"Manager_{i + 1}_{agent_counter}",
-                    "hierarchy_level": 2,
-                    "risk_propensity": 0.4,
-                    "awareness_level": min(1.0, 0.6 * edu_mod_l2),  # Aplica escolaridade do L2
-                    "education_profile": edu_l2,
-                    "trust_links_count": avg_friends
-                })
+            for _ in range(int(num2)):
+                dept_agents.append(_make_agent(i, agent_counter, "Manager", 2, 0.4, edu_l2, avg_friends, weights))
                 agent_counter += 1
 
-            # --- GERAR AGENTES LEVEL 3 ---
-            edu_mod_l3 = edu_weights[edu_l3]
-            for _ in range(n_level3):
-                dept_agents.append({
-                    "name": f"Director_{i + 1}_{agent_counter}",
-                    "hierarchy_level": 3,
-                    "risk_propensity": 0.3,
-                    "awareness_level": min(1.0, 0.7 * edu_mod_l3),  # Aplica escolaridade do L3
-                    "education_profile": edu_l3,
-                    "trust_links_count": avg_friends
-                })
+            for _ in range(int(num3)):
+                dept_agents.append(_make_agent(i, agent_counter, "Director", 3, 0.3, edu_l3, avg_friends, weights))
                 agent_counter += 1
 
             departments.append({"name": name, "agents": dept_agents})
 
-    st.divider()
+    st.header("4. Defensive Posture")
+    defense_col1, defense_col2, defense_col3 = st.columns(3)
+    with defense_col1:
+        training_coverage = st.slider("Training coverage", 0.0, 1.0, 0.0)
+    with defense_col2:
+        mfa = st.toggle("Enable MFA", value=False)
+    with defense_col3:
+        seg = st.slider("Network Segmentation", 0.0, 1.0, 0.5)
 
-    # --- SECTION 2: DEFENSE MECHANISMS ---
-    st.header("2. Mitigation & Defensive Posture")
-
-    cd1, cd2, cd3 = st.columns(3)
-    with cd1:
-        st.markdown("**Technical Control**")
-        mfa = st.toggle("Enable Multi-Factor Authentication (MFA)", value=False)
-    with cd2:
-        st.markdown("**Human Control**")
-        training = st.slider("Security Awareness Training Effectiveness", 0.0, 1.0, 0.3)
-    with cd3:
-        st.markdown("**Network Control**")
-        segmentation = st.slider("Network Segmentation Level", 0.0, 1.0, 0.5)
-
-    # Dicionário de configuração final pronto a ser enviado para a API do Mesa
-    config = {
-        "organization": {
-            "departments": departments
-        },
-        "attack": {
-            "type": "Phishing",
-            "click_rate": 0.5
-        },
+    return {
+        "organization": {"departments": departments},
+        "scientific_params": weights,
+        "attack": {"type": attack_type},
         "defense": {
             "mfa": mfa,
-            "training": training,
-            "segmentation": segmentation
-        }
+            "training": global_training,
+            "training_coverage": training_coverage,
+            "segmentation": seg,
+        },
+        "attack_params": {
+            "global_intensity": global_intensity,
+            "global_training": global_training,
+            "spear_bonus": spear_bonus,
+            "homophily_multiplier": homophily_multiplier,
+            "role_base": weights["cargo"],
+            "education_profile": weights["edu"],
+        },
     }
 
-    return config
+
+def _make_agent(dept_index, agent_counter, prefix, level, risk, education, trust_links, weights):
+    awareness = min(1.0, weights["cargo"][level] * weights["edu"][education])
+    return {
+        "name": f"{prefix}_{dept_index + 1}_{agent_counter}",
+        "hierarchy_level": level,
+        "risk_propensity": risk,
+        "awareness_level": awareness,
+        "education_level": education,
+        "education": education,
+        "trust_links_count": trust_links,
+    }
