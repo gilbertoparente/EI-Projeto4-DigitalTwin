@@ -1,59 +1,48 @@
-# EI-Projeto4-DigitalTwin
-# Digital Twin: Simulação de Cibersegurança (Engenharia Social)
+# Cyber Digital Twin - IPVC
 
-Este projeto consiste num **Digital Twin** desenvolvido para modelar e simular ataques de phishing e propagação de ameaças numa organização de ~150 colaboradores. O objetivo é analisar a eficácia de diferentes camadas de defesa (MFA, Formação, Segmentação) através de simulações baseadas em agentes.
+Este projeto apresenta um Digital Twin para a simulação de ataques de Engenharia Social (Phishing) em ambientes corporativos, permitindo a avaliação de diferentes estratégias de defesa e o seu impacto na propagação de ameaças.
 
-## 🏗️ Arquitetura do Sistema
-
-O sistema está estruturado em 3 camadas principais:
-
-1.  **Camada de Input:** Interface Web (Mesa Visualization) onde são configurados os parâmetros do cenário (ex: % de funcionários formados, ativação de MFA).
-2.  **Camada de Processamento:** Motor de simulação baseado no **Mesa Framework** e **NetworkX**, que gere a lógica de agentes e o grafo sociotécnico da organização.
-3.  **Camada de Output:** Dashboards e gráficos em tempo real que monitorizam métricas como a taxa de propagação e o tempo de deteção (MTTD).
-
-                ┌──────────────────────────┐
-                │   INPUT LAYER FastAPI    │
-                │  (dados reais / sinais)  │
-                └──────────┬───────────────┘
-                           ↓
-        ┌────────────────────────────────────────┐
-        │          PROCESSING LAYER Mesa         │
-        │  models/ + agents/ (Mesa simulation)   │
-        └────────────────┬──────────────────────┘
-                         ↓
-                ┌──────────────────────────┐
-                │        OUTPUT LAYER json  │
-                │  resultados / métricas    │
-                │  gráficos / logs / API    │
-                └──────────────────────────┘
-
-
-## 🛠️ Tecnologias Utilizadas
-
-* **Python 3.10+**
-* **Mesa:** Framework para modelação baseada em agentes (ABM).
-* **NetworkX:** Criação e manipulação de grafos de redes complexas.
-* **Matplotlib:** Geração de gráficos estatísticos.
-* **Tornado:** Servidor para visualização web.
+## 🚀 Arquitetura do Sistema
+O sistema utiliza uma arquitetura baseada em microsserviços, separando o motor de simulação da interface de utilizador:
+- **Backend:** FastAPI (Motor de Simulação & API)
+- **Frontend:** Streamlit (Dashboard de Controlo e Analytics)
+- **Persistência:** SQLite (Histórico de Simulações, Configurações e Topologia de Rede)
 
 
 
-## Como Executar
+## 📅 RoadMap de Desenvolvimento (Sprints)
 
-1. Abrir o terminal na pasta do prjecto e iniciar o servidor:
-2. python -m src.main
+### Sprint 0: Investigação e Conceitos
+* Definição de conceitos de Digital Twin e aplicação no sistema.
+* Investigação de ferramentas de simulação: NetLogo, AnyLogic e **Mesa (Framework escolhido)**.
+* Definição da arquitetura de agentes, modelos e vetores de ataque.
 
-Abrir o Dashboard:
- $env:PYTHONPATH = "."       
-streamlit run ui/dashboard.py
+### Sprint 1: Motor de Simulação
+* **Modelagem de Agentes:** Implementação de agentes com perfis comportamentais (propensão ao risco, nível de consciência, hierarquia).
+* **Configuração de Defesas:** Desenvolvimento de módulos de mitigação (MFA, segmentação de rede, programas de treino).
+* **Motor Estocástico:** Lógica probabilística de propagação baseada em *Trust Maps*.
 
+### Sprint 2: API e Persistência Inicial
+* **Desenvolvimento da API RESTful:** Exposição do motor via FastAPI.
+* **Pipeline de Persistência:** Integração inicial com SQLite.
+* **Telemetria:** Sistema de *logging* assíncrono para monitorização de métricas (ticks da simulação).
 
-### 1. Clonar o repositório
-```bash
-git clone https://github.com/gilbertoparente/EI-Projeto4-DigitalTwin.git
-cd DigitalTwin
+### Sprint 3: Dashboard e Analytics
+* **Dashboard Interativo:** Interface modular com Streamlit.
+* **Módulo de Analytics Comparativo:** Execução em *Batch* para comparação de cenários.
+* **Visualização de Histórico:** Sistema de arquivo para consulta de métricas e topologia.
 
+### Sprint Final: Consolidação e Gestão de Dados
+* **Design do Esquema SQLite:** Estruturação avançada (runs, configs, steps, graphs).
+* **Persistência Transparente:** Automação da gravação de dados em tempo real.
+* **Endpoints de Histórico:** Recuperação de dados retroativos e reconstrução de grafos históricos.
 
+## 🛠️ Instalação
 
+1. Clonar o repositório:
+   ```bash
+   git clone <link-do-repositorio>
 
-# 
+2. Instalar dependencias
+   ```bash
+pip install -r requirements.txt
