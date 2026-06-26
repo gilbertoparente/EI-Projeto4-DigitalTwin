@@ -222,4 +222,4 @@ venv/
 __pycache__/
 
 
-database/digital_twin.db
+*.db
