@@ -220,3 +220,6 @@ __marimo__/
 .idea/
 venv/
 __pycache__/
+
+
+database/digital_twin.db
