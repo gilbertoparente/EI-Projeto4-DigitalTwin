@@ -1,18 +1,24 @@
-import random
-from src.core.attacks.base_attack import Attack
+from src.core.attacks.phishing import PhishingAttack
 
-
-class PhishingAttack(Attack):
+class SpearPhishingAttack(PhishingAttack):
 
     def select_seeds(self, agents, graph, config):
-        # Seleciona aleatoriamente 5% dos agentes (seeds) para iniciar a propagação.
         if not agents:
             return []
 
-        agent_ids = list(agents.keys())
-        n = max(1, len(agent_ids) // 20)  # 5% da população
+        ranked = sorted(
+            agents.values(),
+            key=lambda a: a.hierarchy_level,
+            reverse=True
+        )
 
-        return random.sample(agent_ids, n)
+        return [a.id for a in ranked[:5]]
 
     def compute_click_probability(self, agent, attack_config):
-        return attack_config["click_rate"] * agent.risk_propensity
+        hierarchy_bonus = 1 + (agent.hierarchy_level * 0.15)
+
+        return (
+            attack_config["click_rate"]
+            * agent.risk_propensity
+            * hierarchy_bonus
+        )

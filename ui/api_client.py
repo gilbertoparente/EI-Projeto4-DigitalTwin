@@ -3,8 +3,6 @@ import requests
 BASE_URL = "http://127.0.0.1:8000"
 
 
-# ── Simulação principal ──────────────────────────────────────────────────────
-
 def start_simulation(payload):
     try:
         r = requests.post(f"{BASE_URL}/start", json=payload)
@@ -53,7 +51,14 @@ def get_departments():
         return {}
 
 
-# ── Comparação de cenários ───────────────────────────────────────────────────
+def run_analytics(config: dict, ticks: int, attack_type: str):
+    try:
+        r = requests.post(f"{BASE_URL}/analytics/run",
+                          json={"config": config, "ticks": ticks, "attack_type": attack_type})
+        return r.json()
+    except Exception as e:
+        return {"error": str(e)}
+
 
 def start_scenarios(config_a: dict, config_b: dict):
     try:
@@ -88,36 +93,17 @@ def get_scenarios_compare():
         return {"error": str(e)}
 
 
-# ── Departamentos guardados ──────────────────────────────────────────────────
-
-def save_department(name: str, department: dict):
+def get_history():
     try:
-        r = requests.post(f"{BASE_URL}/departments/save",
-                          json={"name": name, "department": department})
+        r = requests.get(f"{BASE_URL}/history")
         return r.json()
     except Exception as e:
-        return {"error": str(e)}
+        return {"runs": []}
 
 
-def list_saved_departments():
+def get_history_steps(run_id: int):
     try:
-        r = requests.get(f"{BASE_URL}/departments/saved")
+        r = requests.get(f"{BASE_URL}/history/steps/{run_id}")
         return r.json()
     except Exception as e:
-        return {"departments": {}}
-
-
-def get_saved_department(name: str):
-    try:
-        r = requests.get(f"{BASE_URL}/departments/saved/{name}")
-        return r.json()
-    except Exception as e:
-        return {"error": str(e)}
-
-
-def delete_saved_department(name: str):
-    try:
-        r = requests.delete(f"{BASE_URL}/departments/saved/{name}")
-        return r.json()
-    except Exception as e:
-        return {"error": str(e)}
+        return []

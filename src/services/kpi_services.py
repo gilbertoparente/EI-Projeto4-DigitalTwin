@@ -1,30 +1,14 @@
-from typing import Dict
-
 class KPIService:
 
-    def compute(self, result: Dict[str, int], total_agents: int) -> Dict[str, float]:
-        if total_agents <= 0:
-            return {
-                "infection_rate": 0.0,
-                "click_rate": 0.0,
-                "open_rate": 0.0,
-                "conversion_click_to_infected": 0.0
-            }
-
+    def compute(self, result: dict, total_agents: int) -> dict:
+        total = max(total_agents, 1)
         infected = result.get("infected", 0)
-        clicked = result.get("clicked", 0)
-        opened = result.get("opened", 0)
-
-        # Taxas relativas à população total
-        infection_rate = infected / total_agents
-        click_rate = clicked / total_agents
-        open_rate = opened / total_agents
-
-        conversion_click_to_infected = infected / clicked if clicked > 0 else 0.0
+        clicked  = result.get("clicked", 0)
+        opened   = result.get("opened", 0)
 
         return {
-            "infection_rate": round(infection_rate, 4),
-            "click_rate": round(click_rate, 4),
-            "open_rate": round(open_rate, 4),
-            "conversion_rate": round(conversion_click_to_infected, 4)
+            "infection_rate":   round(infected / total, 4),
+            "click_rate":       round(clicked  / total, 4),
+            "open_rate":        round(opened   / total, 4),
+            "conversion_rate":  round(infected / max(clicked, 1), 4),
         }

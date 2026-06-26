@@ -1,5 +1,10 @@
 import mesa
 
+EDUCATION_AWARENESS_MOD = {
+    "High School":       0.8,
+    "Bachelor's Degree": 1.0,
+    "Master's / PhD":    1.2,
+}
 
 class BaseAgent(mesa.Agent):
 
@@ -17,18 +22,17 @@ class BaseAgent(mesa.Agent):
     ):
         super().__init__(unique_id, model)
 
-        # Identificadores
-        self.name = name
-        self.department = department
-        self.role = role
+        self.name            = name
+        self.department      = department
+        self.role            = role
         self.hierarchy_level = hierarchy_level
-        self.education_level = education_level
+        self.education_level = education_level  # "High School" | "Bachelor's Degree" | "Master's / PhD"
 
-        # Comportamento humano
-        self.risk_propensity = risk_propensity      # 0.0 a 1.0
-        self.awareness_level = awareness_level      # 0.0 a 1.0
+        self.risk_propensity = risk_propensity
+        edu_mod = EDUCATION_AWARENESS_MOD.get(education_level, 1.0)
+        self.awareness_level = min(1.0, awareness_level * edu_mod)
 
-        self.compromised = False
-        self.inbox = []
+        self.compromised        = False
+        self.inbox              = []
         self.trust_map: dict[int, float] = {}
         self.interactions_count = 0

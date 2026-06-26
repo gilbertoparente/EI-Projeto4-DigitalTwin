@@ -5,22 +5,21 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st
 
 st.set_page_config(
-    page_title="CyberTwin | IPVC",
+    page_title="Cyber Digital Twin | IPVC",
     page_icon="🛡️",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
 st.markdown("""
 <style>
-/* ── Sidebar base ─────────────────────────────── */
 [data-testid="stSidebar"] {
     background: #0d1117;
     border-right: 1px solid #21262d;
 }
 [data-testid="stSidebar"] * { color: #e6edf3 !important; }
+[data-testid="stSidebarNav"] { display: none !important; }
 
-/* Hide default radio widget */
 div[data-testid="stRadio"] > label { display: none; }
 div[data-testid="stRadio"] > div   { gap: 2px; }
 div[data-testid="stRadio"] label[data-baseweb="radio"] {
@@ -42,14 +41,10 @@ div[data-testid="stRadio"] label[data-baseweb="radio"][aria-checked="true"] {
     color: #58a6ff;
     border-left: 3px solid #58a6ff;
 }
-div[data-testid="stRadio"] div[data-testid="stMarkdownContainer"] p {
-    font-size: 14px !important;
-}
 
-/* Main area */
 .main .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
+.main { background-color: #0d1117; }
 
-/* Metric cards */
 [data-testid="stMetric"] {
     background: #161b22;
     border: 1px solid #21262d;
@@ -60,7 +55,6 @@ div[data-testid="stRadio"] div[data-testid="stMarkdownContainer"] p {
 [data-testid="stMetricValue"]    { color: #e6edf3 !important; }
 [data-testid="stMetricDelta"]    { font-size: 12px !important; }
 
-/* Buttons */
 .stButton > button[kind="primary"] {
     background: #238636;
     border: 1px solid #2ea043;
@@ -71,20 +65,15 @@ div[data-testid="stRadio"] div[data-testid="stMarkdownContainer"] p {
 .stButton > button[kind="primary"]:hover { background: #2ea043; }
 .stButton > button { border-radius: 8px; }
 
-/* Section headers */
 h1 { color: #e6edf3 !important; font-size: 1.5rem !important; font-weight: 600 !important; }
 h2 { color: #e6edf3 !important; font-size: 1.1rem !important; font-weight: 600 !important; }
 h3 { color: #c9d1d9 !important; font-size: 1rem  !important; font-weight: 500 !important; }
 
-/* Divider */
 hr { border-color: #21262d !important; }
-
-/* Info/warning/success */
 [data-testid="stAlert"] { border-radius: 8px; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Sidebar ────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
     <div style="padding: 1rem 0 .5rem; display:flex; align-items:center; gap:10px;">
@@ -99,29 +88,34 @@ with st.sidebar:
 
     page = st.radio(
         "nav",
-        ["⚗️  Experiments", "📡  Live System", "🕸️  Network", "⚔️  Comparação"],
-        label_visibility="collapsed"
+        ["⚗️  Experiments", "📡  Live System", "📊  Analytics", "🕸️  Network", "⚔️  Comparison", "📜  History"],
+        label_visibility="collapsed",
     )
 
     st.markdown("<hr style='border-color:#21262d; margin:1rem 0 .75rem'>", unsafe_allow_html=True)
     st.markdown("""
     <div style="font-size:11px; color:#484f58; padding: 0 4px; line-height:1.7">
-      Projeto IV — Engenharia Informática<br>
-      Simulação de Engenharia Social<br>
+      Project IV — Computer Engineering<br>
+      Social Engineering Simulation<br>
       IPVC © 2026
     </div>
     """, unsafe_allow_html=True)
 
-# ── Router ─────────────────────────────────────────────────
 if "Experiments" in page:
-    from ui.views import experiments
+    from ui.pages import experiments
     experiments.show()
 elif "Live System" in page:
-    from ui.views import live_system
+    from ui.pages import live_system
     live_system.show()
+elif "Analytics" in page:
+    from ui.pages import analytics
+    analytics.show()
 elif "Network" in page:
-    from ui.views import network
+    from ui.pages import network
     network.show()
-elif "Comparação" in page:
-    from ui.views import scenario_comparison
+elif "Comparison" in page:
+    from ui.pages import scenario_comparison
     scenario_comparison.show()
+elif "History" in page:
+    from ui.pages import history
+    history.show()

@@ -14,16 +14,16 @@ class GraphService:
                 "department": agent.department,
                 "state":      "infected" if agent.compromised else "clean",
                 "hierarchy":  agent.hierarchy_level,
+                "hierarchy_level": agent.hierarchy_level,
                 "awareness":  round(agent.awareness_level, 2),
                 "risk":       round(agent.risk_propensity, 2),
+                "education":  agent.education_level,
             })
 
         seen_edges = set()
         for source_id, connections in graph_connections.items():
             for conn in connections:
                 target_id = conn["target"]
-                # Garante que a chave é sempre (int, int) ordenado,
-                # evitando duplicados por inversão de ordem ou tipo misto
                 edge_key = (min(int(source_id), int(target_id)),
                             max(int(source_id), int(target_id)))
                 if edge_key in seen_edges:

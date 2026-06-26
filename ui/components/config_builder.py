@@ -1,17 +1,48 @@
 import json
 import streamlit as st
 
-_TABLER_CDN = (
-    "<link rel='stylesheet' "
-    "href='https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css'>"
-)
+EDUCATION_LEVELS = ["High School", "Bachelor's Degree", "Master's / PhD"]
+
+EDUCATION_AWARENESS_MOD = {
+    "High School":       0.8,
+    "Bachelor's Degree": 1.0,
+    "Master's / PhD":    1.2,
+}
 
 DEPARTMENTS_FILE = "saved_departments.json"
 
+BUILTIN_PRESETS = {
+    "small_company": {
+        "name": "Small Company",
+        "departments": [
+            {"name": "IT", "agents": [{"hierarchy_level": 2, "risk_propensity": 0.3,
+              "awareness_level": 0.8, "education_level": "Bachelor's Degree"}]},
+            {"name": "Sales", "agents": [{"hierarchy_level": 1, "risk_propensity": 0.6,
+              "awareness_level": 0.4, "education_level": "High School"}]},
+        ],
+    },
+    "bank": {
+        "name": "Bank / Financial",
+        "departments": [
+            {"name": "Compliance", "agents": [{"hierarchy_level": 3, "risk_propensity": 0.2,
+              "awareness_level": 0.9, "education_level": "Master's / PhD"}]},
+            {"name": "Operations", "agents": [{"hierarchy_level": 1, "risk_propensity": 0.5,
+              "awareness_level": 0.5, "education_level": "Bachelor's Degree"}]},
+            {"name": "Customer Support", "agents": [{"hierarchy_level": 1, "risk_propensity": 0.7,
+              "awareness_level": 0.3, "education_level": "High School"}]},
+        ],
+    },
+    "tech_startup": {
+        "name": "Tech Startup",
+        "departments": [
+            {"name": "Engineering", "agents": [{"hierarchy_level": 2, "risk_propensity": 0.25,
+              "awareness_level": 0.85, "education_level": "Master's / PhD"}]},
+            {"name": "Marketing", "agents": [{"hierarchy_level": 1, "risk_propensity": 0.55,
+              "awareness_level": 0.45, "education_level": "Bachelor's Degree"}]},
+        ],
+    },
+}
 
-# ─────────────────────────────────────────────────────────────────────────────
-# JSON helpers
-# ─────────────────────────────────────────────────────────────────────────────
 
 def _load_saved_departments() -> dict:
     try:
@@ -21,243 +52,286 @@ def _load_saved_departments() -> dict:
         return {}
 
 
-def _save_departments_to_file(data: dict) -> None:
+def _save_departments_to_file(data: dict):
     with open(DEPARTMENTS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# UI helpers
-# ─────────────────────────────────────────────────────────────────────────────
+def _all_presets() -> dict:
+    merged = dict(BUILTIN_PRESETS)
+    merged.update(_load_saved_departments())
+    return merged
 
-def _section_card_open(label: str, color: str = "#58a6ff"):
+
+def _flush_pending_preset(prefix: str):
+    pending_key = f"_pending_preset_{prefix}"
+    if pending_key not in st.session_state:
+        return
+    pending     = st.session_state.pop(pending_key)
+    departments = pending.get("departments", [])
+    if not departments:
+        return
+
+    n = max(1, min(6, len(departments)))
+    st.session_state[f"{prefix}n_depts"] = n
+
+    for i, dept_data in enumerate(departments[:6]):
+        agents = dept_data.get("agents", [])
+        first  = agents[0] if agents else {}
+        st.session_state[f"{prefix}dept_name_{i}"] = dept_data.get("name", f"Dept_{i+1}")
+        st.session_state[f"{prefix}n_agents_{i}"]  = max(2, len(agents)) if agents else 5
+        st.session_state[f"{prefix}risk_{i}"]      = float(first.get("risk_propensity", 0.5))
+        st.session_state[f"{prefix}aware_{i}"]     = float(first.get("awareness_level", 0.5))
+        st.session_state[f"{prefix}hier_{i}"]      = int(first.get("hierarchy_level", 1))
+        st.session_state[f"{prefix}edu_{i}"]       = first.get("education_level", "Bachelor's Degree")
+
+
+def _schedule_preset(prefix: str, departments: list):
+    st.session_state[f"_pending_preset_{prefix}"] = {
+        "departments": departments,
+    }
+    st.rerun()
+
+
+def _section(label: str, color: str = "#58a6ff"):
     st.markdown(
-        f"""{_TABLER_CDN}
-            <div style="background:#161b22; border:1px solid #21262d; border-radius:10px;
-                        padding:1.25rem 1.5rem; margin-bottom:1rem;">
-              <div style="border-left:3px solid {color}; padding-left:12px; margin-bottom:1rem;">
-                <span style="font-size:11px; font-weight:600; color:{color};
-                             text-transform:uppercase; letter-spacing:.06em;">{label}</span>
-              </div>""",
+        f"""<div style="display:flex;align-items:center;gap:10px;margin:1.25rem 0 .75rem;">
+              <div style="width:3px;height:18px;background:{color};
+                          border-radius:2px;flex-shrink:0;"></div>
+              <span style="font-size:12px;font-weight:600;color:{color};
+                           text-transform:uppercase;letter-spacing:.07em;">{label}</span>
+              <div style="flex:1;height:1px;background:#21262d;"></div>
+            </div>""",
         unsafe_allow_html=True,
     )
 
 
-def _section_card_close():
-    st.markdown("</div>", unsafe_allow_html=True)
+def _preset_card(key: str, preset: dict, prefix: str, saved_only: dict):
+    depts      = preset.get("departments", [])
+    dept_names = ", ".join(d.get("name", "?") for d in depts[:3])
+    if len(depts) > 3:
+        dept_names += f" +{len(depts)-3}"
 
+    sample     = depts[0].get("agents", [{}])[0] if depts else {}
+    risk_raw   = sample.get("risk_propensity", 0.5)
+    aware_raw  = sample.get("awareness_level", 0.5)
+    risk_color  = "#f85149" if risk_raw > 0.6 else "#e3b341" if risk_raw > 0.3 else "#3fb950"
+    aware_color = "#3fb950" if aware_raw > 0.6 else "#e3b341" if aware_raw > 0.3 else "#f85149"
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Guardar todos os departamentos actuais como preset
-# ─────────────────────────────────────────────────────────────────────────────
+    st.markdown(
+        f"""<div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;
+                        padding:.7rem .9rem;margin-bottom:.3rem;">
+              <div style="font-size:12px;font-weight:600;color:#e6edf3;margin-bottom:3px;">
+                {preset['name']}
+              </div>
+              <div style="font-size:11px;color:#6e7681;margin-bottom:5px;">{dept_names}</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <span style="font-size:11px;color:{risk_color};">risk {int(risk_raw*100)}%</span>
+                <span style="font-size:11px;color:{aware_color};">aware {int(aware_raw*100)}%</span>
+                <span style="font-size:11px;color:#8b949e;">{len(depts)} dept</span>
+              </div>
+            </div>""",
+        unsafe_allow_html=True,
+    )
 
-def _render_save_panel(prefix: str, departments: list):
-    """Linha simples para guardar a config actual como preset."""
-    saved = _load_saved_departments()
-    col_name, col_btn = st.columns([3, 1])
-    with col_name:
-        preset_name = st.text_input(
-            "Nome do preset",
-            placeholder="Ex: Empresa_Media",
-            key=f"{prefix}preset_name_input",
-            label_visibility="collapsed",
-        )
-    with col_btn:
-        if st.button("💾 Guardar", key=f"{prefix}btn_save_preset", use_container_width=True):
-            if not preset_name.strip():
-                st.warning("Introduz um nome.")
-            elif not departments:
-                st.warning("Não há departamentos para guardar.")
-            else:
-                key = preset_name.strip().lower().replace(" ", "_")
-                saved[key] = {"name": preset_name.strip(), "departments": departments}
-                _save_departments_to_file(saved)
-                st.success(f"✅ **{preset_name}** guardado!")
+    is_builtin = key in BUILTIN_PRESETS
+    if is_builtin:
+        if st.button("Apply", key=f"{prefix}apply_{key}", use_container_width=True):
+            if depts:
+                _schedule_preset(prefix, depts)
+    else:
+        c1, c2 = st.columns([3, 1])
+        with c1:
+            if st.button("Apply", key=f"{prefix}apply_{key}", use_container_width=True):
+                if depts:
+                    _schedule_preset(prefix, depts)
+        with c2:
+            if st.button("🗑", key=f"{prefix}del_{key}", use_container_width=True,
+                         help="Remove preset"):
+                saved_only.pop(key, None)
+                _save_departments_to_file(saved_only)
+                st.rerun()
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Injectar preset nos session_state keys de um departamento específico
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _inject_dept_preset(prefix: str, i: int, dept_data: dict):
-    """
-    Escreve directamente no session_state os valores do preset para o
-    departamento i. Os widgets lêem session_state pelo key, por isso
-    na próxima renderização aparecem já com os valores carregados.
-    """
-    agents = dept_data.get("agents", [])
-    if not agents:
-        return
-
-    # Usa as métricas do primeiro agente (todos partilham os mesmos valores)
-    first = agents[0]
-
-    st.session_state[f"{prefix}dept_name_{i}"] = dept_data.get("name", f"Dept_{i+1}")
-    st.session_state[f"{prefix}n_agents_{i}"] = len(agents)
-    st.session_state[f"{prefix}risk_{i}"]     = float(first.get("risk_propensity", 0.5))
-    st.session_state[f"{prefix}aware_{i}"]    = float(first.get("awareness_level", 0.5))
-    st.session_state[f"{prefix}hier_{i}"]     = int(first.get("hierarchy_level", 1))
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Função pública principal
-# ─────────────────────────────────────────────────────────────────────────────
 
 def build_simulation_config(prefix: str = "") -> dict:
-    """
-    Constrói o dicionário completo de configuração da simulação.
-    prefix: string única quando a função é chamada mais do que uma vez na mesma página.
-    """
+    _flush_pending_preset(prefix)
 
-    saved = _load_saved_departments()
+    all_presets = _all_presets()
+    saved_only  = _load_saved_departments()
 
-    # ── Secção 1: Organização ─────────────────────────────────
-    _section_card_open("Organização", "#58a6ff")
-    n_depts = st.number_input(
-        "Número de departamentos",
-        min_value=1, max_value=6, value=2,
-        key=f"{prefix}n_depts",
-        help="Quantos departamentos distintos terá a organização simulada.",
-    )
-    _section_card_close()
+    _section("Organization", "#58a6ff")
+    col_editor, col_presets = st.columns([3, 1], gap="large")
 
-    # ── Departamentos ─────────────────────────────────────────
-    departments = []
-    for i in range(int(n_depts)):
-        with st.expander(f"Departamento {i + 1}", expanded=(i == 0)):
+    with col_editor:
+        n_depts = st.number_input(
+            "Number of departments",
+            min_value=1, max_value=6, value=2,
+            key=f"{prefix}n_depts",
+            help="How many distinct departments the simulated organization will have.",
+        )
 
-            # ── Carregar preset para este departamento ────────
-            if saved:
-                preset_options = {"— sem preset —": None}
-                preset_options.update({v["name"]: k for k, v in saved.items()})
+        departments = []
+        for i in range(int(n_depts)):
+            st.markdown(
+                f"""<div style="display:flex;align-items:center;gap:8px;margin:1.25rem 0 .6rem;">
+                      <div style="background:#21262d;color:#8b949e;font-size:10px;font-weight:700;
+                                  border-radius:4px;padding:2px 7px;letter-spacing:.05em;">
+                        DEPT {i+1}
+                      </div>
+                      <div style="flex:1;height:1px;background:#21262d;"></div>
+                    </div>""",
+                unsafe_allow_html=True,
+            )
 
-                selected_label = st.selectbox(
-                    "Carregar preset",
-                    options=list(preset_options.keys()),
-                    key=f"{prefix}dept_preset_select_{i}",
-                    help="Substitui as métricas deste departamento pelo preset seleccionado.",
-                )
-                selected_key = preset_options[selected_label]
-
-                if selected_key is not None:
-                    preset_entry = saved[selected_key]
-                    # Um preset pode ter vários departamentos; usa o i-ésimo se existir,
-                    # caso contrário usa sempre o primeiro.
-                    dept_list = preset_entry.get("departments", [])
-                    source_dept = dept_list[i] if i < len(dept_list) else (dept_list[0] if dept_list else None)
-
-                    if source_dept and st.button(
-                        f"↩ Aplicar \"{selected_label}\"",
-                        key=f"{prefix}btn_apply_preset_{i}",
-                    ):
-                        _inject_dept_preset(prefix, i, source_dept)
-                        st.rerun()
-
-                st.markdown("<hr style='border-color:#21262d;margin:8px 0'>", unsafe_allow_html=True)
-
-            # ── Campos do departamento ────────────────────────
             c1, c2 = st.columns([2, 1])
             with c1:
                 name = st.text_input(
-                    "Nome do departamento",
-                    value=f"Dept_{i + 1}",
+                    "Name", value=f"Dept_{i+1}",
                     key=f"{prefix}dept_name_{i}",
                 )
             with c2:
                 n_agents = st.number_input(
-                    "Nº de agentes",
-                    min_value=2, max_value=50, value=5,
+                    "Agents", min_value=2, max_value=50, value=5,
                     key=f"{prefix}n_agents_{i}",
                 )
 
-            dept_agents = []
-            if n_agents > 0:
-                st.markdown(
-                    "<p style='font-size:12px;color:#6e7681;margin:8px 0 4px'>Perfil dos agentes</p>",
-                    unsafe_allow_html=True,
+            a1, a2, a3, a4 = st.columns(4)
+            with a1:
+                risk = st.slider(
+                    "Risk", 0.0, 1.0, 0.5, 0.05,
+                    key=f"{prefix}risk_{i}",
+                    help="Base probability of clicking a suspicious message.",
                 )
-                a1, a2, a3 = st.columns(3)
-                with a1:
-                    risk = st.slider(
-                        "Propensão ao risco", 0.0, 1.0, 0.5, 0.05,
-                        key=f"{prefix}risk_{i}",
-                        help="Probabilidade base de um agente clicar numa mensagem suspeita.",
-                    )
-                with a2:
-                    awareness = st.slider(
-                        "Nível de consciência", 0.0, 1.0, 0.5, 0.05,
-                        key=f"{prefix}aware_{i}",
-                        help="Literacia em cibersegurança. Valores altos reduzem a taxa de clique.",
-                    )
-                with a3:
-                    hier = st.select_slider(
-                        "Nível hierárquico", options=[1, 2, 3], value=1,
-                        key=f"{prefix}hier_{i}",
-                        help="1 = operacional, 2 = gestão intermédia, 3 = direção.",
-                    )
+            with a2:
+                base_awareness = st.slider(
+                    "Awareness", 0.0, 1.0, 0.5, 0.05,
+                    key=f"{prefix}aware_{i}",
+                    help="Cybersecurity literacy (before education modifier).",
+                )
+            with a3:
+                hier = st.select_slider(
+                    "Hierarchy", options=[1, 2, 3], value=1,
+                    key=f"{prefix}hier_{i}",
+                    help="1 = operational  2 = management  3 = executive",
+                )
+            with a4:
+                education = st.selectbox(
+                    "Education", EDUCATION_LEVELS, index=1,
+                    key=f"{prefix}edu_{i}",
+                    help="Modifies awareness: High School ×0.8 | BSc ×1.0 | MSc/PhD ×1.2",
+                )
 
-                for j in range(int(n_agents)):
-                    dept_agents.append({
-                        "name": f"User_{i+1}_{j+1}",
+            edu_mod = EDUCATION_AWARENESS_MOD.get(education, 1.0)
+            eff_aw  = min(1.0, base_awareness * edu_mod)
+            st.caption(f"Effective awareness with {edu_mod:.1f}× modifier: **{eff_aw:.2f}**")
+
+            departments.append({
+                "name": name,
+                "agents": [
+                    {
+                        "name":            f"User_{i+1}_{j+1}",
                         "hierarchy_level": hier,
                         "risk_propensity": risk,
-                        "awareness_level": awareness,
-                    })
+                        "awareness_level": base_awareness,
+                        "education_level": education,
+                        "education":       education,
+                    }
+                    for j in range(int(n_agents))
+                ],
+            })
 
-            departments.append({"name": name, "agents": dept_agents})
+    with col_presets:
+        _section("Presets", "#a371f7")
 
-    st.markdown("<div style='height:.5rem'></div>", unsafe_allow_html=True)
+        new_name = st.text_input(
+            "Save as…",
+            placeholder="Preset name",
+            key=f"{prefix}preset_name_input",
+        )
+        if st.button("💾 Save", key=f"{prefix}btn_save_preset", use_container_width=True):
+            if not new_name.strip():
+                st.warning("Enter a name.")
+            else:
+                k = new_name.strip().lower().replace(" ", "_")
+                saved_only[k] = {"name": new_name.strip(), "departments": departments}
+                _save_departments_to_file(saved_only)
+                st.success("Saved!")
+                st.rerun()
 
-    # ── Guardar preset ────────────────────────────────────────
-    _section_card_open("💾  Guardar configuração como preset", "#a371f7")
-    _render_save_panel(prefix, departments)
-    _section_card_close()
+        st.markdown("<div style='height:.4rem'></div>", unsafe_allow_html=True)
 
-    st.markdown("<div style='height:.5rem'></div>", unsafe_allow_html=True)
+        if all_presets:
+            for key, preset in all_presets.items():
+                _preset_card(key, preset, prefix, saved_only)
+        else:
+            st.markdown(
+                "<p style='font-size:12px;color:#6e7681;'>No presets.</p>",
+                unsafe_allow_html=True,
+            )
 
-    # ── Secção 2: Ataque ──────────────────────────────────────
-    _section_card_open("Ataque", "#f78166")
-    ac1, ac2 = st.columns(2)
-    with ac1:
+    col_atk, col_def = st.columns(2, gap="large")
+
+    with col_atk:
+        _section("Attack Vector", "#f78166")
+
         attack_type = st.selectbox(
-            "Tipo de ataque", ["Phishing", "Spear Phishing"],
+            "Attack type",
+            ["Phishing", "Spear Phishing"],
             key=f"{prefix}attack_type",
-            help="Phishing: campanha massiva aleatória. Spear Phishing: ataque direcionado aos agentes com hierarquia mais alta.",
+            help="Phishing: random mass campaign.\nSpear Phishing: targets the highest-ranking agents.",
         )
-    with ac2:
+        st.markdown(
+            f"""<div style="background:#1a0f0a;border:1px solid #3d1a10;border-radius:6px;
+                           padding:.6rem .9rem;margin:.5rem 0 1rem;font-size:12px;color:#c9a08a;">
+                  {"Targets the 5 agents with the highest hierarchy level."
+                   if attack_type == "Spear Phishing"
+                   else "Reaches ~5% of the population randomly per tick."}
+                </div>""",
+            unsafe_allow_html=True,
+        )
         click_rate = st.slider(
-            "Intensidade base do ataque", 0.0, 1.0, 0.5, 0.05,
+            "Base intensity", 0.0, 1.0, 0.5, 0.05,
             key=f"{prefix}click_rate",
-            help="Escala a probabilidade de sucesso inicial do atacante antes das defesas serem aplicadas.",
+            help="Scales the initial success probability before defenses apply.",
         )
-    _section_card_close()
 
-    # ── Secção 3: Defesas ─────────────────────────────────────
-    _section_card_open("Defesas", "#3fb950")
-    dc1, dc2, dc3 = st.columns(3)
-    with dc1:
-        st.markdown("**MFA**")
+    with col_def:
+        _section("Defenses", "#3fb950")
+
         mfa = st.toggle(
-            "Ativar MFA", value=True,
+            "MFA enabled", value=True,
             key=f"{prefix}mfa",
-            help="Multi-Factor Authentication. Bloqueia ~90% das tentativas de acesso mesmo após credenciais comprometidas.",
+            help="Multi-Factor Authentication — blocks ~90% of access attempts even with stolen credentials.",
         )
-    with dc2:
+        st.markdown(
+            f"""<div style="background:{'#0d2b1d' if mfa else '#2a1700'};
+                           border:1px solid {'#1a6e2d' if mfa else '#5a3500'};
+                           border-radius:6px;padding:.5rem .9rem;margin:.25rem 0 .75rem;
+                           font-size:12px;color:{'#3fb950' if mfa else '#e3b341'};">
+                  {"MFA enabled — 90% reduction in compromise rate."
+                   if mfa else "MFA disabled — compromised credentials = direct access."}
+                </div>""",
+            unsafe_allow_html=True,
+        )
         training = st.slider(
-            "Eficácia da formação", 0.0, 1.0, 0.3, 0.05,
+            "Training effectiveness", 0.0, 1.0, 0.3, 0.05,
             key=f"{prefix}training",
-            help="Simula programas de awareness. Aumenta o nível de consciência dos agentes a cada tick.",
+            help="Awareness programs — increases agent awareness each tick.",
         )
-    with dc3:
         segmentation = st.slider(
-            "Segmentação de rede", 0.0, 1.0, 0.5, 0.05,
+            "Network segmentation", 0.0, 1.0, 0.5, 0.05,
             key=f"{prefix}segmentation",
-            help="0 = rede plana (lateral movement livre). 1 = zero-trust (propagação entre departamentos bloqueada).",
+            help="0 = flat network (free lateral movement).  1 = zero-trust.",
         )
-    _section_card_close()
 
     return {
         "organization": {"departments": departments},
         "attack":       {"type": attack_type, "click_rate": click_rate},
         "defense":      {"mfa": mfa, "training": training, "segmentation": segmentation},
+        "attack_params": {
+            "global_intensity":     click_rate,
+            "global_training":      training,
+            "spear_bonus":          0.2,
+            "homophily_multiplier": 1.4,
+        },
     }

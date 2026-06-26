@@ -10,25 +10,21 @@ class CollaboratorAgent(BaseAgent):
 
         message = self.inbox.pop(0)
         sender_id = message.get("sender_id")
+        self.interactions_count += 1
 
-        trust = self.trust_map.get(sender_id, 0.5)
+        trust     = self.trust_map.get(sender_id, 0.5)
         base_prob = self.risk_propensity * (1 - self.awareness_level)
         final_prob = min(1.0, base_prob + (0.4 * trust))
 
         if random.random() < final_prob:
-            if random.random() < final_prob:
-                if random.random() < final_prob / 2:
-                    self._become_compromised()
+            self._become_compromised()
 
     def _become_compromised(self):
-
         if not self.model.mfa.apply(self):
-            return  # MFA bloqueou
+            return
 
         self.compromised = True
-        self.interactions_count += 1
 
-        # Propagação para vizinhos no grafo
         neighbors = self.model.grid.get_neighbors(self.unique_id, include_center=False)
         for neighbor_id in neighbors:
             neighbor = self.model.get_agent(neighbor_id)
